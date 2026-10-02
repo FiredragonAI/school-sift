@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- release 开了 shrinkResources:通知小图标只在 Dart 侧按名字引用,资源收缩器看不见,会被删掉
+     (真机表现:PlatformException invalid_icon,提醒整个失效)。这里显式保留。 -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification,@mipmap/ic_launcher" />

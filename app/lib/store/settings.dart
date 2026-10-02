@@ -24,6 +24,9 @@ class Settings {
     this.briefMinute = 30,
   });
 
+  /// 显示用版本号;发版时与 pubspec.yaml 同步改
+  static const appVersion = '0.2.0';
+
   static const defaultModel = 'claude-opus-5-5';
   static const models = <(String, String)>[
     ('claude-opus-5-5', 'Claude Opus 5.5(默认,最准)'),

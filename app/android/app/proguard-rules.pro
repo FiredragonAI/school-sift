@@ -10,3 +10,11 @@
 -keep class com.dexterous.** { *; }
 -keep class com.google.gson.** { *; }
 -keepattributes Signature, *Annotation*
+
+# ML Kit 通过反射找 *Registrar 的无参构造(ComponentDiscovery),R8 会把它们当死代码删掉,
+# 表现为 logcat 里 NoSuchMethodException ...Registrar.<init> []。整包保留,体积影响很小。
+-keep class com.google.mlkit.** { *; }
+-keep class com.google.android.gms.internal.mlkit_** { *; }
+-keep class com.google.android.gms.common.** { *; }
+-keep class * implements com.google.firebase.components.ComponentRegistrar { public <init>(); }
+-dontwarn com.google.mlkit.**
