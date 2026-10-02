@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
 import '../platform/export.dart';
 import '../store/app_state.dart';
+import 'settings_screen.dart';
 import 'widgets.dart';
 
 class MoreScreen extends StatelessWidget {
@@ -19,6 +20,16 @@ class MoreScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(s.tabMore)),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.settings_outlined),
+            title: Text(s.settings),
+            subtitle: Text('${s.aiSection} · ${s.ocrSection} · ${s.remindersSection}', maxLines: 1, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
+        ),
         SectionTitle(s.children, trailing: IconButton(icon: const Icon(Icons.add), onPressed: () => showChildEditor(context))),
         Card(
           child: Column(children: [
@@ -82,6 +93,19 @@ class MoreScreen extends StatelessWidget {
               leading: const Icon(Icons.upload_outlined),
               title: Text(s.importJson),
               onTap: () => _importDialog(context),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.table_chart_outlined),
+              title: Text(s.csvExport),
+              subtitle: Wrap(spacing: 6, children: [
+                for (final k in [('grades', s.csvGrades), ('logs', s.csvLogs), ('events', s.csvEvents), ('tasks', s.csvTasks)])
+                  ActionChip(
+                    label: Text(k.$2),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => exportText('schoolsift-${k.$1}.csv', 'text/csv', st.exportCsv(k.$1)),
+                  ),
+              ]),
             ),
           ]),
         ),

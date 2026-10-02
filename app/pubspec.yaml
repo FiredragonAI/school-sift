@@ -1,7 +1,7 @@
 name: school_sift
 description: "学校通 · SchoolSift —— 把学校通知变成家庭日程、签字袋、成绩与学习记录"
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -15,11 +15,21 @@ dependencies:
 
   # 状态与存储(本机优先:数据只存在手机/浏览器里)
   provider: ^6.1.2
-  shared_preferences: ^2.3.2
+  hive_ce: ^2.20.0                   # IndexedDB(Web)/文件(Android)的本机数据库
+  hive_ce_flutter: ^2.4.0
+  shared_preferences: ^2.3.2        # 只用于从 0.1 版的 localStorage 数据迁移
+  path_provider: ^2.1.4
 
   # 影像:拍纸质通知 / 签字单,纯 Dart 缩图后以 base64 入库
   image_picker: ^1.1.2
   image: ^4.2.0
+  file_selector: ^1.0.3             # 选截图 / PDF 文件
+  printing: ^5.13.0                 # PDF 栅格化成图片(Android 用 PdfRenderer,Web 用 pdf.js)
+  google_mlkit_text_recognition: ^0.15.0  # Android 端侧 OCR;Web 走 Tesseract.js(见 platform/ocr_web.dart)
+
+  # 提醒(Android 本地通知;Web 只在页面打开时提醒)
+  flutter_local_notifications: ^19.0.0
+  timezone: ^0.10.0
 
   # 导出:分享 .ics / JSON 备份;Web 端走浏览器下载
   share_plus: ^10.1.4

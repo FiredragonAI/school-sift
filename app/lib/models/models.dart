@@ -85,8 +85,9 @@ class Notice {
   final String body;
   final String source; // 粘贴 / 拍照 / 演示
   final DateTime receivedAt;
-  final String? imageB64; // 缩图 JPEG base64
+  final List<String> imageIds; // 附图(照片/截图/PDF 页)在图片库里的 id
   final bool processed; // 已确认提取
+  final String extractor; // 最后一次识别用的是 rules 还是 ai
   const Notice({
     required this.id,
     required this.childId,
@@ -94,18 +95,20 @@ class Notice {
     required this.body,
     required this.source,
     required this.receivedAt,
-    this.imageB64,
+    this.imageIds = const [],
     this.processed = false,
+    this.extractor = '',
   });
-  Notice copyWith({bool? processed, String? title, String? childId}) => Notice(
+  Notice copyWith({bool? processed, String? title, String? childId, String? body, List<String>? imageIds, String? extractor}) => Notice(
         id: id,
         childId: childId ?? this.childId,
         title: title ?? this.title,
-        body: body,
+        body: body ?? this.body,
         source: source,
         receivedAt: receivedAt,
-        imageB64: imageB64,
+        imageIds: imageIds ?? this.imageIds,
         processed: processed ?? this.processed,
+        extractor: extractor ?? this.extractor,
       );
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -114,8 +117,9 @@ class Notice {
         'body': body,
         'source': source,
         'receivedAt': receivedAt.toIso8601String(),
-        'imageB64': imageB64,
+        'imageIds': imageIds,
         'processed': processed,
+        'extractor': extractor,
       };
   factory Notice.fromJson(Map<String, dynamic> j) => Notice(
         id: j['id'],
@@ -124,8 +128,9 @@ class Notice {
         body: j['body'] ?? '',
         source: j['source'] ?? '',
         receivedAt: DateTime.parse(j['receivedAt']),
-        imageB64: j['imageB64'],
+        imageIds: ((j['imageIds'] as List?) ?? const []).cast<String>(),
         processed: j['processed'] ?? false,
+        extractor: j['extractor'] ?? '',
       );
 }
 
@@ -240,7 +245,7 @@ class Task {
   final double? amount;
   final String assigneeId;
   final String noticeId;
-  final String? imageB64; // 纸质单据照片
+  final String? imageId; // 纸质单据照片(图片库 id)
   final TaskStatus status;
   final DateTime createdAt;
   const Task({
@@ -252,7 +257,7 @@ class Task {
     this.amount,
     this.assigneeId = '',
     this.noticeId = '',
-    this.imageB64,
+    this.imageId,
     this.status = TaskStatus.open,
     required this.createdAt,
   });
@@ -265,7 +270,7 @@ class Task {
     double? amount,
     String? assigneeId,
     TaskStatus? status,
-    String? imageB64,
+    String? imageId,
   }) =>
       Task(
         id: id,
@@ -276,7 +281,7 @@ class Task {
         amount: amount ?? this.amount,
         assigneeId: assigneeId ?? this.assigneeId,
         noticeId: noticeId,
-        imageB64: imageB64 ?? this.imageB64,
+        imageId: imageId ?? this.imageId,
         status: status ?? this.status,
         createdAt: createdAt,
       );
@@ -292,7 +297,7 @@ class Task {
         'amount': amount,
         'assigneeId': assigneeId,
         'noticeId': noticeId,
-        'imageB64': imageB64,
+        'imageId': imageId,
         'status': status.name,
         'createdAt': createdAt.toIso8601String(),
       };
@@ -305,7 +310,7 @@ class Task {
         amount: (j['amount'] as num?)?.toDouble(),
         assigneeId: j['assigneeId'] ?? '',
         noticeId: j['noticeId'] ?? '',
-        imageB64: j['imageB64'],
+        imageId: j['imageId'],
         status: TaskStatus.values.byName(j['status'] ?? 'open'),
         createdAt: DateTime.parse(j['createdAt']),
       );
@@ -367,6 +372,7 @@ class StudyLog {
   final int readingMinutes;
   final int focus; // 1-5
   final String note;
+  final String teacherNote; // 老师反馈(联系册/口头/App 里抄来的)
   const StudyLog({
     required this.id,
     required this.childId,
@@ -375,6 +381,7 @@ class StudyLog {
     this.readingMinutes = 0,
     this.focus = 3,
     this.note = '',
+    this.teacherNote = '',
   });
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -384,6 +391,7 @@ class StudyLog {
         'readingMinutes': readingMinutes,
         'focus': focus,
         'note': note,
+        'teacherNote': teacherNote,
       };
   factory StudyLog.fromJson(Map<String, dynamic> j) => StudyLog(
         id: j['id'],
@@ -393,5 +401,6 @@ class StudyLog {
         readingMinutes: j['readingMinutes'] ?? 0,
         focus: j['focus'] ?? 3,
         note: j['note'] ?? '',
+        teacherNote: j['teacherNote'] ?? '',
       );
 }

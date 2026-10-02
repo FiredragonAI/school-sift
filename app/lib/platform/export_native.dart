@@ -13,3 +13,9 @@ Future<void> openUrl(String url) async {
   // 原生端没有 url_launcher 时退化为分享链接
   await Share.share(url);
 }
+
+/// 发一段文字给家人(短信 / 微信 / WhatsApp 都行)——F05:对方不用装 App。
+Future<bool> shareText(String text, {String? subject}) async {
+  await Share.share(text, subject: subject);
+  return true;
+}

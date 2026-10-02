@@ -1,6 +1,9 @@
 // 日程页:月历 + 当日列表 / 待办清单(两个视图切换)。
 // 日程可导出 .ics 或一键加到 Google 日历——不另造日历,家长还用自己的。
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -233,7 +236,7 @@ class TaskTile extends StatelessWidget {
       title: Text(t.title, style: TextStyle(decoration: t.isOpen ? null : TextDecoration.lineThrough, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(sub, style: TextStyle(color: t.overdue ? const Color(0xFFE6563F) : null), maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (t.imageB64 != null) GestureDetector(onTap: () => showFullImage(context, t.imageB64!), child: SizedBox(width: 32, height: 32, child: b64Image(t.imageB64!))),
+        if (t.imageId != null) GestureDetector(onTap: () => showStoredImage(context, t.imageId!), child: SizedBox(width: 32, height: 32, child: storedImage(context, t.imageId!))),
         if (!compact) ...[const SizedBox(width: 6), ChildTag(t.childId)],
         Checkbox(
           value: !t.isOpen,
@@ -323,6 +326,12 @@ Future<void> showEventEditor(BuildContext context, {Event? event, Day? day}) asy
             ),
           ]),
           const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => shareOrCopy(c, eventShareText(s, st, event), subject: event.title),
+            icon: const Icon(Icons.send_outlined, size: 18),
+            label: Text(s.shareFamily),
+          ),
+          const SizedBox(height: 8),
           TextButton.icon(
             style: TextButton.styleFrom(foregroundColor: Theme.of(c).colorScheme.error),
             onPressed: () async {
@@ -342,7 +351,36 @@ Future<void> showEventEditor(BuildContext context, {Event? event, Day? day}) asy
 
 // ---------- 待办编辑 ----------
 
-Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, String? imageB64}) async {
+/// 日程 → 一句话,发给没装 App 的家人(F05)。
+String eventShareText(S s, AppState st, Event e) {
+  final c = st.child(e.childId)?.name;
+  final who = st.member(e.assigneeId)?.name;
+  return [
+    if (c != null) '[$c]',
+    e.title,
+    '·',
+    s.mdw(e.day),
+    if (e.start != null) s.tod(e.start),
+    if (e.end != null) '- ${s.tod(e.end)}',
+    if (e.location.isNotEmpty) '· ${e.location}',
+    if (who != null) '· 👤 $who',
+    if (e.note.isNotEmpty) '\n${e.note}',
+  ].join(' ');
+}
+
+String taskShareText(S s, AppState st, Task t) {
+  final c = st.child(t.childId)?.name;
+  final who = st.member(t.assigneeId)?.name;
+  return [
+    if (c != null) '[$c]',
+    t.title,
+    if (t.due != null) '· ${s.t('${s.md(t.due!)}前', 'by ${s.md(t.due!)}')}',
+    if (t.amount != null) '· ¥${t.amount!.toStringAsFixed(t.amount! % 1 == 0 ? 0 : 2)}',
+    if (who != null) '· 👤 $who',
+  ].join(' ');
+}
+
+Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, Uint8List? imageBytes}) async {
   final s = S.read(context);
   final st = context.read<AppState>();
   final title = TextEditingController(text: task?.title ?? '');
@@ -352,7 +390,8 @@ Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, S
   Day? due = task?.due ?? Day.today().add(2);
   var who = task?.assigneeId ?? '';
   var status = task?.status ?? TaskStatus.open;
-  String? img = task?.imageB64 ?? imageB64;
+  final originalImg = task?.imageId == null ? null : st.image(task!.imageId);
+  String? img = originalImg ?? (imageBytes == null ? null : base64Encode(imageBytes));
   await showEditorSheet(
     context,
     title: task == null ? s.newTask : s.viewTasks,
@@ -414,7 +453,7 @@ Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, S
               amount: double.tryParse(amount.text),
               assigneeId: who,
               noticeId: task?.noticeId ?? '',
-              imageB64: img,
+              imageId: img == null ? null : (img == originalImg ? task!.imageId : st.putImage(img!)),
               status: status,
               createdAt: task?.createdAt ?? DateTime.now(),
             ));
@@ -422,6 +461,14 @@ Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, S
           },
           child: Text(s.save),
         ),
+        if (task != null) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => shareOrCopy(c, taskShareText(s, st, task), subject: task.title),
+            icon: const Icon(Icons.send_outlined, size: 18),
+            label: Text(s.shareFamily),
+          ),
+        ],
         if (task != null)
           TextButton.icon(
             style: TextButton.styleFrom(foregroundColor: Theme.of(c).colorScheme.error),

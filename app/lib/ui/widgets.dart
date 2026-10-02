@@ -1,15 +1,16 @@
 // 复用的小部件:Logo、孩子筛选条、孩子头像点、空状态、图片工具、通用编辑对话框。
 
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/strings.dart';
 import '../models/models.dart';
+import '../platform/export.dart';
 import '../store/app_state.dart';
 
 class AppLogo extends StatelessWidget {
@@ -181,6 +182,55 @@ String compressToB64(Uint8List bytes) {
   final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
   final resized = longest > 1280 ? img.copyResize(decoded, width: decoded.width > decoded.height ? 1280 : null, height: decoded.height >= decoded.width ? 1280 : null) : decoded;
   return base64Encode(img.encodeJpg(resized, quality: 72));
+}
+
+/// 选图,返回压缩后的 JPEG 字节(给 OCR / AI 用)。
+Future<Uint8List?> pickImageBytes(BuildContext context, {bool camera = false}) async {
+  final x = await ImagePicker().pickImage(
+    source: camera ? ImageSource.camera : ImageSource.gallery,
+    maxWidth: 1600,
+    maxHeight: 1600,
+    imageQuality: 80,
+  );
+  if (x == null) return null;
+  return compressBytes(await x.readAsBytes());
+}
+
+Uint8List compressBytes(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return bytes;
+  final longest = decoded.width > decoded.height ? decoded.width : decoded.height;
+  final resized = longest > 1280 ? img.copyResize(decoded, width: decoded.width > decoded.height ? 1280 : null, height: decoded.height >= decoded.width ? 1280 : null) : decoded;
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 72));
+}
+
+/// 图片库里的图(按 id)。找不到时给个占位,别崩。
+Widget storedImage(BuildContext context, String id, {double? height, BoxFit fit = BoxFit.cover}) {
+  final b64 = context.read<AppState>().image(id);
+  if (b64 == null) {
+    return Container(
+      height: height,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+      child: const Icon(Icons.broken_image_outlined),
+    );
+  }
+  return b64Image(b64, height: height, fit: fit);
+}
+
+void showStoredImage(BuildContext context, String id) {
+  final b64 = context.read<AppState>().image(id);
+  if (b64 != null) showFullImage(context, b64);
+}
+
+/// 发给家人:原生走分享面板;网页不支持 Web Share 时复制到剪贴板。
+Future<void> shareOrCopy(BuildContext context, String text, {String? subject}) async {
+  final s = S.read(context);
+  final ok = await shareText(text, subject: subject);
+  if (!ok) {
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.copiedShare)));
+  }
 }
 
 Widget b64Image(String b64, {double? height, BoxFit fit = BoxFit.cover}) {

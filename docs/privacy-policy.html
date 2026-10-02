@@ -29,15 +29,21 @@
 <h2>儿童信息</h2>
 <p>应用面向家长使用。你记录的孩子姓名、年级、成绩等信息同样只存在本机。删除应用(或在「更多 → 清空全部数据」)即彻底删除。</p>
 
-<h2>未来的云端功能</h2>
-<p>若后续加入云端 AI 识别(例如照片文字识别),会在该功能开启前单独征得你的同意,并在此页面更新说明;默认仍为纯本机模式。</p>
+<h2>图片文字识别(OCR)</h2>
+<p>默认在你的设备上完成:网页版用 Tesseract.js 在浏览器里识别(首次使用会从公共 CDN 下载语言包),Android 版用 Google ML Kit 端侧模型。图片不会上传。</p>
+
+<h2>可选的 AI 识别(你自己的 Claude API key)</h2>
+<p>你可以在「更多 → 设置」填入自己的 Anthropic API key。<strong>只有你主动点「用 AI 识别」时</strong>,应用才会把<strong>这一条通知</strong>的文字和附图(或 PDF)用你的 key 直接发送到 Anthropic 的 API(api.anthropic.com),不经过我们或任何第三方服务器。孩子姓名、成绩、学习记录、其他通知都不会发送。第一次使用会弹窗说明并征得你的同意;你随时可以改用离线识别。API key 只保存在本机,不包含在备份导出里。Anthropic 对 API 数据的处理适用其 <a href="https://www.anthropic.com/legal/privacy">隐私政策</a>与商业条款。</p>
+
+<h2>提醒</h2>
+<p>Android 版的提醒是本地定时通知,由系统在设备上触发,不涉及任何服务器。网页版只在页面打开时用浏览器通知。</p>
 
 <h2>联系</h2>
 <p>问题与建议:<a href="https://github.com/FiredragonAI/school-sift/issues">github.com/FiredragonAI/school-sift/issues</a></p>
 
 <div class="en">
 <h2>Privacy Policy (English)</h2>
-<p><strong>SchoolSift is local-first.</strong> Everything you enter — children, school notices, events, tasks, photos, grades and study logs — stays on your own device (the Android app's private storage or your browser's local storage). There is no account, no server, no analytics or advertising SDK, and nothing is uploaded, sold or shared. Photos are downscaled and stored locally only. Exports (.ics, Google Calendar link, JSON backup) are triggered by you and handed to the destination you choose. Deleting the app, or using "More → Clear all data", removes everything. Any future cloud feature (e.g. OCR) will ask for consent first and be documented here.</p>
+<p><strong>SchoolSift is local-first.</strong> Everything you enter — children, school notices, events, tasks, photos, grades and study logs — stays on your own device (the Android app's private storage or your browser's local storage). There is no account, no server, no analytics or advertising SDK, and nothing is uploaded, sold or shared. Photos are downscaled and stored locally only. Exports (.ics, Google Calendar link, JSON backup) are triggered by you and handed to the destination you choose. Deleting the app, or using "More → Clear all data", removes everything. OCR runs on-device (Tesseract.js in the browser, Google ML Kit on Android). <strong>Optional AI extraction</strong> uses <em>your own</em> Anthropic API key: only when you tap "Extract with AI" is that single notice's text and images sent directly to api.anthropic.com — never children's names, grades or other notices, and never through our servers. You are asked for consent the first time, and the key is stored only on your device.</p>
 </div>
 </body>
 </html>

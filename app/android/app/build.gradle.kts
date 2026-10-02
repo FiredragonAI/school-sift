@@ -24,6 +24,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications 用了 java.time,需要脱糖
+        isCoreLibraryDesugaringEnabled = true
     }
 
     defaultConfig {
@@ -64,4 +66,10 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // ML Kit 中文文字识别模型(插件只带了拉丁模型,中文要自己加;约 +20 MB)
+    implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
 }

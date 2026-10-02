@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/reminder_plan.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../store/app_state.dart';
@@ -36,10 +37,20 @@ class TodayScreen extends StatelessWidget {
           Text(s.appName),
         ]),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Center(child: Text(s.mdw(today), style: Theme.of(context).textTheme.bodyMedium)),
+          Center(child: Text(s.mdw(today), style: Theme.of(context).textTheme.bodyMedium)),
+          IconButton(
+            tooltip: s.shareBrief,
+            icon: const Icon(Icons.send_outlined),
+            onPressed: () {
+              final text = ReminderPlanner(st).briefText(today);
+              if (text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.briefEmpty)));
+                return;
+              }
+              shareOrCopy(context, '${s.appName} · ${s.mdw(today)}\n$text', subject: s.briefTitle);
+            },
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: ListView(

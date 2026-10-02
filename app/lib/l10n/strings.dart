@@ -190,6 +190,73 @@ class S {
       'Turn school notices into family events, forms to sign and fees to pay; log test scores and daily study.\n\nStart with demo data, or add your child now?');
   String get startFresh => t('添加我的孩子', 'Add my child');
 
+  // 通知录入:附件 / OCR / AI
+  String get attachments => t('附件', 'Attachments');
+  String get pickFile => t('选文件(截图/PDF)', 'File (screenshot / PDF)');
+  String get ocrRun => t('识别图片文字(本机)', 'Read text from images (on device)');
+  String get ocrRunning => t('正在识别文字…', 'Reading text…');
+  String get ocrDone => t('识别出的文字已填入,请核对后再识别日程', 'Text filled in — check it, then extract');
+  String get ocrFailed => t('文字识别失败', 'Text recognition failed');
+  String get ocrEmpty => t('没识别出文字,可以手动输入或用 AI', 'No text found — type it or use AI');
+  String get aiExtract => t('用 AI 识别日程与待办', 'Extract with AI');
+  String get rulesExtract => t('离线识别日程与待办', 'Extract offline');
+  String get useRulesInstead => t('改用离线规则', 'Use offline rules instead');
+  String get useAiInstead => t('改用 AI 识别', 'Use AI instead');
+  String get aiRunning => t('正在请求 Claude…', 'Asking Claude…');
+  String get aiFailed => t('AI 识别失败', 'AI extraction failed');
+  String get aiNoKey => t('还没设置 Claude API key。去「更多 → 设置」填一个,或先用离线识别。', 'No Claude API key yet. Add one under More → Settings, or extract offline.');
+  String get aiConsentTitle => t('把这条通知发给 Claude?', 'Send this notice to Claude?');
+  String get aiConsentBody => t(
+      '只会发送这一条通知的文字和附图,用你自己的 API key 直接发给 Anthropic(api.anthropic.com),不经过任何其他服务器。孩子姓名、其他通知、成绩等都不会发送。\n\n不想上传时随时可以用离线识别。',
+      'Only this notice’s text and attached images are sent, directly to Anthropic (api.anthropic.com) with your own API key — no other server in between. Children’s names, other notices and grades are never sent.\n\nYou can always use offline extraction instead.');
+  String get aiConsentOk => t('发送并识别', 'Send & extract');
+  String get aiConsentRemember => t('以后不再提示', 'Don’t ask again');
+  String get extractorAi => t('AI 识别', 'AI');
+  String get extractorRules => t('离线规则', 'Offline rules');
+  String get page => t('页', 'p.');
+  String get noContent => t('先粘贴文字或添加附件', 'Paste text or add an attachment first');
+  String get sourceFile => t('文件', 'File');
+
+  // 设置
+  String get settings => t('设置', 'Settings');
+  String get aiSection => t('AI 识别(可选)', 'AI extraction (optional)');
+  String get apiKey => t('Claude API key', 'Claude API key');
+  String get apiKeyNote => t('只保存在这台设备上,不会随备份导出。有 key 时拍照/PDF/文字都由 Claude 理解;没有就用本机 OCR + 规则。', 'Stored only on this device, never included in backups. With a key, photos/PDFs/text are understood by Claude; without one, on-device OCR + rules.');
+  String get model => t('模型', 'Model');
+  String get testKey => t('测试连接', 'Test connection');
+  String get testOk => t('连接成功', 'Connected');
+  String get ocrSection => t('图片文字识别(本机)', 'On-device text recognition');
+  String get ocrLang => t('OCR 语言', 'OCR language');
+  String get ocrAuto => t('跟随界面语言', 'Follow app language');
+  String get ocrEng => t('英文', 'English');
+  String get ocrChi => t('中文 + 英文', 'Chinese + English');
+  String get ocrNoteWeb => t('网页版用 Tesseract.js 在浏览器里识别,首次使用会下载语言包(英文约 4 MB,中文约 20 MB),图片不上传。', 'The web version runs Tesseract.js in your browser; the first run downloads a language pack (English ≈4 MB, Chinese ≈20 MB). Images never leave the device.');
+  String get ocrNoteAndroid => t('Android 版用 Google ML Kit 端侧模型,离线可用。', 'Android uses Google ML Kit on-device models; works offline.');
+  String get remindersSection => t('提醒', 'Reminders');
+  String get remindersOn => t('截止与日程提醒', 'Deadline & event reminders');
+  String get remindersDesc => t('截止前一天 19:00、当天 8:00;逾期每天再催;日程前一天与前 1 小时', 'Day before at 19:00, due day at 8:00, daily while overdue; events the day before and 1 h ahead');
+  String get briefOn => t('每日简报', 'Daily brief');
+  String get briefTime => t('简报时间', 'Brief time');
+  String get testNotify => t('发一条测试通知', 'Send a test notification');
+  String get remindersWebNote => t('网页版只能在页面开着时提醒;要后台提醒请装 Android 版。', 'The web version can only remind you while the page is open; install the Android app for background reminders.');
+  String get permissionDenied => t('通知权限没开,系统设置里打开后才会响', 'Notification permission is off — enable it in system settings');
+  String get testSent => t('已发送', 'Sent');
+
+  // 协作(F05:对方不用装 App)
+  String get shareFamily => t('发给家人', 'Send to family');
+  String get shareBrief => t('分享简报', 'Share brief');
+  String get copiedShare => t('已复制,粘贴到微信 / 短信发出去', 'Copied — paste into WhatsApp / SMS');
+  String get briefEmpty => t('今明两天没有安排', 'Nothing today or tomorrow');
+
+  // 学习 / 导出
+  String get teacherNote => t('老师反馈', 'Teacher feedback');
+  String get teacherNoteHint => t('联系册、App 或口头反馈,抄一句', 'From the planner, app or in person');
+  String get csvExport => t('导出 CSV(Excel 可开)', 'Export CSV');
+  String get csvGrades => t('成绩', 'Grades');
+  String get csvLogs => t('学习记录', 'Study logs');
+  String get csvEvents => t('日程', 'Events');
+  String get csvTasks => t('待办', 'Tasks');
+
   // 日期格式
   String weekday(int wd) => zh ? '周${'一二三四五六日'[wd - 1]}' : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][wd - 1];
   String monthName(int m) => zh ? '$m月' : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1];

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'l10n/strings.dart';
 import 'store/app_state.dart';
+import 'store/reminder_sync.dart';
 import 'ui/calendar_screen.dart';
 import 'ui/growth_screen.dart';
 import 'ui/inbox_screen.dart';
@@ -14,7 +15,7 @@ import 'ui/widgets.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
-  state.load();
+  state.load().then((_) => ReminderSync.attach(state));
   runApp(ChangeNotifierProvider.value(value: state, child: const SchoolSiftApp()));
 }
 
@@ -122,8 +123,7 @@ class _ShellState extends State<Shell> {
               child: AppLogo(size: 40),
             ),
             destinations: [
-              for (final d in dests)
-                NavigationRailDestination(icon: Icon(d.$1), selectedIcon: Icon(d.$2), label: Text(d.$3)),
+              for (final d in dests) NavigationRailDestination(icon: Icon(d.$1), selectedIcon: Icon(d.$2), label: Text(d.$3)),
             ],
           ),
           const VerticalDivider(width: 1),

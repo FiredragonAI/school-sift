@@ -380,7 +380,10 @@ class _StudyTab extends StatelessWidget {
               dense: true,
               leading: Text('⭐' * l.focus, style: const TextStyle(fontSize: 10)),
               title: Text('${s.relative(l.day)} · ${l.homeworkDone ? '✓ ' : '✗ '}${s.homeworkDone} · ${l.readingMinutes} min'),
-              subtitle: l.note.isEmpty ? null : Text(l.note),
+              subtitle: l.note.isEmpty && l.teacherNote.isEmpty
+                  ? null
+                  : Text([if (l.note.isNotEmpty) l.note, if (l.teacherNote.isNotEmpty) '🏫 ${l.teacherNote}'].join('\n')),
+              isThreeLine: l.note.isNotEmpty && l.teacherNote.isNotEmpty,
               onTap: () => showStudyLogEditor(context, childId: child.id, day: l.day),
             ),
         ]),
@@ -422,6 +425,7 @@ Future<void> showStudyLogEditor(BuildContext context, {String? childId, Day? day
   var minutes = existing?.readingMinutes ?? 20;
   var focus = existing?.focus ?? 3;
   final note = TextEditingController(text: existing?.note ?? '');
+  final teacher = TextEditingController(text: existing?.teacherNote ?? '');
   await showEditorSheet(
     context,
     title: '${s.studyLog} · ${s.relative(d)}',
@@ -438,10 +442,12 @@ Future<void> showStudyLogEditor(BuildContext context, {String? childId, Day? day
             IconButton(onPressed: () => setS(() => focus = i), icon: Icon(i <= focus ? Icons.star : Icons.star_border, color: const Color(0xFFE09A1B))),
         ]),
         TextField(controller: note, decoration: InputDecoration(labelText: s.logNote), maxLines: 2),
+        const SizedBox(height: 12),
+        TextField(controller: teacher, decoration: InputDecoration(labelText: s.teacherNote, hintText: s.teacherNoteHint, prefixIcon: const Icon(Icons.school_outlined)), maxLines: 2),
         const SizedBox(height: 16),
         FilledButton(
           onPressed: () {
-            st.upsertLog(StudyLog(id: existing?.id ?? newId(), childId: cid, day: d, homeworkDone: hw, readingMinutes: minutes, focus: focus, note: note.text.trim()));
+            st.upsertLog(StudyLog(id: existing?.id ?? newId(), childId: cid, day: d, homeworkDone: hw, readingMinutes: minutes, focus: focus, note: note.text.trim(), teacherNote: teacher.text.trim()));
             Navigator.pop(c);
           },
           child: Text(s.save),
@@ -471,8 +477,8 @@ class _PapersTab extends StatelessWidget {
         text: s.papersEmpty,
         action: FilledButton.icon(
           onPressed: () async {
-            final b = await pickImageB64(context, camera: true);
-            if (context.mounted) showTaskEditor(context, kind: TaskKind.sign, imageB64: b);
+            final b = await pickImageBytes(context, camera: true);
+            if (context.mounted) showTaskEditor(context, kind: TaskKind.sign, imageBytes: b);
           },
           icon: const Icon(Icons.add_a_photo_outlined),
           label: Text(s.qaPhoto),
