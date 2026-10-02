@@ -1,0 +1,457 @@
+// 通知理解:从一段格式随意的学校通知(中文或英文)里抽出
+//   - 日程候选:日期 + 时间 + 地点
+//   - 待办候选:要签字回执、要交钱、要带东西,各带截止日期
+//   - 是否是"改期"通知
+// 纯规则、确定性、离线可跑;给出置信度让家长在确认页一眼看出哪条需要改。
+// 以后接云端大模型时只需要返回同样的 Extraction 结构。
+
+import 'package:flutter/material.dart';
+
+import '../models/models.dart';
+
+enum ItemType { event, sign, pay, bring, deadline }
+
+class ExtractedItem {
+  ItemType type;
+  String title;
+  Day? day;
+  TimeOfDay? start;
+  TimeOfDay? end;
+  String location;
+  double? amount;
+  double confidence; // 0..1
+  String evidence; // 来源句子
+  bool keep = true;
+  ExtractedItem({
+    required this.type,
+    required this.title,
+    this.day,
+    this.start,
+    this.end,
+    this.location = '',
+    this.amount,
+    required this.confidence,
+    required this.evidence,
+  });
+}
+
+class Extraction {
+  final String title;
+  final List<ExtractedItem> items;
+  final bool reschedule;
+  final List<String> summary; // 三句以内要点
+  const Extraction({
+    required this.title,
+    required this.items,
+    required this.reschedule,
+    required this.summary,
+  });
+}
+
+class NoticeParser {
+  final Day today;
+  NoticeParser({Day? today}) : today = today ?? Day.today();
+
+  static final _signRe = RegExp(
+      r'签字|签名|签收|回执|家长签|确认单|同意书|知情书|sign(ed)? and return|signature|permission slip|consent form|return the (slip|form)',
+      caseSensitive: false);
+  static final _payRe = RegExp(
+      r'缴费|交费|费用|收费|交钱|付款|转账|报名费|餐费|书本费|校服费|班费|pay|fee|cost|payment|\$\s?\d|¥|￥|\d+(\.\d+)?\s*元',
+      caseSensitive: false);
+  static final _bringRe = RegExp(
+      r'请?(自备|携带|带好|带上|准备好|穿)|请.{0,6}带|需要带|记得带|bring|wear|pack',
+      caseSensitive: false);
+  static final _deadlineRe = RegExp(
+      r'截止|之前|以前|前(交|提交|上交|完成|回复|报名|缴)|最晚|务必于|不晚于|deadline|due|by\s|no later than|before',
+      caseSensitive: false);
+  static final _rescheduleRe = RegExp(
+      r'改为|改到|改至|调整为|调整到|延期|推迟|提前到|提前至|顺延|时间变更|变更为|另行通知|取消|rescheduled|moved to|changed to|postponed|cancel+ed|new (date|time)',
+      caseSensitive: false);
+  static final _eventWordRe = RegExp(
+      r'家长会|运动会|开放日|春游|秋游|研学|参观|演出|汇演|比赛|考试|测验|测试|月考|期中|期末|放假|停课|调休|返校|开学|典礼|讲座|体检|筛查|检查|接种|疫苗|义卖|社团|课后|集合|出发|field trip|parent.?teacher|conference|open house|assembly|picture day|exam|test|quiz|holiday|no school|early (release|dismissal)|concert|recital|game|practice|trip|fair|meeting',
+      caseSensitive: false);
+
+  static const _cnNum = {
+    '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '日': 7, '天': 7,
+  };
+  static const _enMonths = {
+    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+    'jul': 7, 'aug': 8, 'sep': 9, 'sept': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+  };
+  static const _enWeek = {
+    'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6, 'sun': 7,
+  };
+
+  Extraction parse(String text, {String? titleHint}) {
+    final clean = text.replaceAll('\r', '').trim();
+    final sentences = _split(clean);
+    final items = <ExtractedItem>[];
+    final reschedule = _rescheduleRe.hasMatch(clean);
+
+    // 文档级信号:整段提到签字/缴费时,即使具体句子里没日期也要生成待办。
+    bool docSign = false, docPay = false, docBring = false;
+
+    for (final s in sentences) {
+      final dates = _findDates(s);
+      final times = _findTimes(s);
+      final loc = _findLocation(s);
+      final amount = _findAmount(s);
+      final hasSign = _signRe.hasMatch(s);
+      final hasPay = _payRe.hasMatch(s) && amount != null ||
+          RegExp(r'缴费|交费|交钱|付款|报名费|餐费|校服费|班费|payment|fee')
+              .hasMatch(s.toLowerCase());
+      final hasBring = _bringRe.hasMatch(s);
+      final hasDeadline = _deadlineRe.hasMatch(s);
+      docSign |= hasSign;
+      docPay |= hasPay;
+      docBring |= hasBring;
+
+      if (dates.isEmpty) continue;
+      // 一句里多个日期:通常是"X日至Y日"的范围,取第一个做事件、最后一个做截止;
+      // 但"原定明天的秋游改到下周三"这种改期句,新日期在后面,取最后一个。
+      final first = _rescheduleRe.hasMatch(s) ? dates.last : dates.first;
+      final last = dates.last;
+      final isAction = hasSign || hasPay || hasBring || hasDeadline;
+
+      if (isAction) {
+        final type = hasSign
+            ? ItemType.sign
+            : hasPay
+                ? ItemType.pay
+                : hasBring
+                    ? ItemType.bring
+                    : ItemType.deadline;
+        items.add(ExtractedItem(
+          type: type,
+          title: _actionTitle(type, s, titleHint),
+          day: last.day,
+          amount: hasPay ? amount : null,
+          confidence: _conf(last.confidence, s, action: true),
+          evidence: s,
+        ));
+        // 既有截止又像活动(例如"请于 5 日前报名,活动 12 日举行")→ 也给事件
+        if (dates.length >= 2 && _eventWordRe.hasMatch(s)) {
+          items.add(ExtractedItem(
+            type: ItemType.event,
+            title: _eventTitle(s, titleHint),
+            day: first.day,
+            start: times.isNotEmpty ? times.first.$1 : null,
+            end: times.isNotEmpty ? times.first.$2 : null,
+            location: loc,
+            confidence: _conf(first.confidence, s) * 0.85,
+            evidence: s,
+          ));
+        }
+      } else {
+        items.add(ExtractedItem(
+          type: ItemType.event,
+          title: _eventTitle(s, titleHint),
+          day: first.day,
+          start: times.isNotEmpty ? times.first.$1 : null,
+          end: times.isNotEmpty ? times.first.$2 : null,
+          location: loc,
+          confidence: _conf(first.confidence, s),
+          evidence: s,
+        ));
+      }
+    }
+
+    // 无日期的文档级待办:兜底生成,置信度低,默认截止 = 最近的事件前一天
+    final firstEvent = items.where((e) => e.type == ItemType.event).toList()
+      ..sort((a, b) => a.day!.compareTo(b.day!));
+    final fallbackDue =
+        firstEvent.isNotEmpty ? firstEvent.first.day!.add(-1) : null;
+    if (docSign && items.every((e) => e.type != ItemType.sign)) {
+      items.add(ExtractedItem(
+        type: ItemType.sign,
+        title: _actionTitle(ItemType.sign, '', titleHint),
+        day: fallbackDue,
+        confidence: 0.55,
+        evidence: _sentenceWith(sentences, _signRe),
+      ));
+    }
+    if (docPay && items.every((e) => e.type != ItemType.pay)) {
+      items.add(ExtractedItem(
+        type: ItemType.pay,
+        title: _actionTitle(ItemType.pay, '', titleHint),
+        day: fallbackDue,
+        amount: _findAmount(clean),
+        confidence: 0.55,
+        evidence: _sentenceWith(sentences, _payRe),
+      ));
+    }
+    if (docBring && items.every((e) => e.type != ItemType.bring)) {
+      items.add(ExtractedItem(
+        type: ItemType.bring,
+        title: _actionTitle(ItemType.bring, _sentenceWith(sentences, _bringRe), titleHint),
+        day: firstEvent.isNotEmpty ? firstEvent.first.day : null,
+        confidence: 0.5,
+        evidence: _sentenceWith(sentences, _bringRe),
+      ));
+    }
+
+    // 同一天同类型去重(保留置信度高的)
+    final dedup = <String, ExtractedItem>{};
+    for (final it in items) {
+      final k = '${it.type.name}|${it.day?.key}|${it.title}';
+      if (!dedup.containsKey(k) || dedup[k]!.confidence < it.confidence) {
+        dedup[k] = it;
+      }
+    }
+    final out = dedup.values.toList()
+      ..sort((a, b) {
+        final da = a.day?.key ?? '9999', db = b.day?.key ?? '9999';
+        return da.compareTo(db);
+      });
+
+    return Extraction(
+      title: titleHint?.trim().isNotEmpty == true
+          ? titleHint!.trim()
+          : _guessTitle(clean),
+      items: out,
+      reschedule: reschedule,
+      summary: _summary(out, reschedule),
+    );
+  }
+
+  // ---------- 句子切分 ----------
+  List<String> _split(String t) {
+    final raw = t.split(RegExp(r'[\n。!！?？;；]+'));
+    return raw.map((s) => s.trim()).where((s) => s.length >= 2).toList();
+  }
+
+  // ---------- 日期 ----------
+  List<({Day day, double confidence})> _findDates(String s) {
+    final res = <({Day day, double confidence})>[];
+    final lower = s.toLowerCase();
+
+    // 2026年10月8日 / 2026-10-08 / 2026/10/8
+    for (final m in RegExp(r'(20\d{2})\s*[年\-/.]\s*(\d{1,2})\s*[月\-/.]\s*(\d{1,2})\s*[日号]?')
+        .allMatches(s)) {
+      final d = _safe(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!));
+      if (d != null) res.add((day: d, confidence: 0.95));
+    }
+    // 10月8日 / 10月8号 (无年份 → 最近的将来)
+    for (final m in RegExp(r'(?<!\d)(\d{1,2})\s*月\s*(\d{1,2})\s*[日号]').allMatches(s)) {
+      final d = _nearest(int.parse(m[1]!), int.parse(m[2]!));
+      if (d != null && !res.any((r) => r.day == d)) {
+        res.add((day: d, confidence: 0.85));
+      }
+    }
+    // 10/8 或 10.8 (无年份;月在前,中文/美式习惯)
+    if (res.isEmpty) {
+      for (final m in RegExp(r'(?<![\d:：])(\d{1,2})[/.](\d{1,2})(?![\d:：/.])').allMatches(s)) {
+        final d = _nearest(int.parse(m[1]!), int.parse(m[2]!));
+        if (d != null) res.add((day: d, confidence: 0.6));
+      }
+    }
+    // Oct 8 / October 8th / 8 Oct
+    for (final m in RegExp(
+            r'\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(st|nd|rd|th)?(,?\s*(20\d{2}))?')
+        .allMatches(lower)) {
+      final mo = _enMonths[m[1]!]!;
+      final dd = int.parse(m[2]!);
+      final d = m[5] != null ? _safe(int.parse(m[5]!), mo, dd) : _nearest(mo, dd);
+      if (d != null) res.add((day: d, confidence: m[5] != null ? 0.95 : 0.85));
+    }
+    for (final m in RegExp(
+            r'\b(\d{1,2})(st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b')
+        .allMatches(lower)) {
+      final d = _nearest(_enMonths[m[3]!]!, int.parse(m[1]!));
+      if (d != null && !res.any((r) => r.day == d)) res.add((day: d, confidence: 0.85));
+    }
+    if (res.isNotEmpty) return res;
+
+    // 相对日期
+    if (s.contains('大后天')) {
+      res.add((day: today.add(3), confidence: 0.8));
+    } else if (s.contains('后天')) {
+      res.add((day: today.add(2), confidence: 0.8));
+    } else if (s.contains('明天') || s.contains('明日') || lower.contains('tomorrow')) {
+      res.add((day: today.add(1), confidence: 0.8));
+    } else if (s.contains('今天') || s.contains('今日') || lower.contains('today')) {
+      res.add((day: today, confidence: 0.75));
+    }
+    // 相对日期之后继续找星期几:"原定明天…改到下周三"两个都要
+
+    // 本周三 / 下周五 / 周四 / 星期二 / this Friday / next Monday
+    final cn = RegExp(r'(本|这|下下|下)?(周|星期|礼拜)([一二三四五六日天])').firstMatch(s);
+    if (cn != null) {
+      final wd = _cnNum[cn[3]!]!;
+      final prefix = cn[1] ?? '';
+      res.add((day: _weekdayDay(wd, prefix), confidence: prefix.isEmpty ? 0.6 : 0.75));
+      return res;
+    }
+    final en = RegExp(r'\b(this|next)?\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*\b').firstMatch(lower);
+    if (en != null && en[2] != null) {
+      final wd = _enWeek[en[2]!]!;
+      final prefix = en[1] == 'next' ? '下' : (en[1] == 'this' ? '本' : '');
+      res.add((day: _weekdayDay(wd, prefix), confidence: prefix.isEmpty ? 0.6 : 0.75));
+    }
+    return res;
+  }
+
+  Day _weekdayDay(int wd, String prefix) {
+    final cur = today.weekday; // 1..7
+    final thisWeek = today.add(wd - cur);
+    switch (prefix) {
+      case '本':
+      case '这':
+        return thisWeek;
+      case '下':
+        return thisWeek.add(7);
+      case '下下':
+        return thisWeek.add(14);
+      default:
+        // 无前缀:最近的将来那一天(今天算)
+        return thisWeek.compareTo(today) < 0 ? thisWeek.add(7) : thisWeek;
+    }
+  }
+
+  Day? _safe(int y, int m, int d) {
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+    final t = DateTime(y, m, d);
+    if (t.month != m) return null;
+    return Day.of(t);
+  }
+
+  /// 无年份的月日:取 today 之前 45 天到之后 320 天这个窗口里的那一年
+  Day? _nearest(int m, int d) {
+    final a = _safe(today.y, m, d);
+    if (a == null) return null;
+    if (a.diff(today) < -45) return _safe(today.y + 1, m, d);
+    return a;
+  }
+
+  // ---------- 时间 ----------
+  List<(TimeOfDay, TimeOfDay?)> _findTimes(String s) {
+    final out = <(TimeOfDay, TimeOfDay?)>[];
+    final re = RegExp(
+        r'(上午|早上|早晨|中午|下午|晚上|傍晚|am|pm)?\s*(\d{1,2})\s*[:：点时]\s*(\d{2})?\s*分?\s*(半)?\s*(am|pm|a\.m\.|p\.m\.)?'
+        r'(?:\s*(?:[-~—–至到]|to)\s*(上午|下午|晚上)?\s*(\d{1,2})\s*[:：点时]?\s*(\d{2})?\s*分?\s*(半)?\s*(am|pm)?)?',
+        caseSensitive: false);
+    for (final m in re.allMatches(s)) {
+      final h1 = int.parse(m[2]!);
+      if (h1 > 24) continue;
+      // "10月8日" 之类不会进来,因为没有 : 点 时;但 "8时" 要排除日期尾巴:要求前面不是"月"
+      final before = m.start > 0 ? s[m.start - 1] : '';
+      if (before == '月' && m[3] == null) continue;
+      final ap = (m[1] ?? m[5] ?? '').toLowerCase();
+      final start = _tod(h1, m[3], m[4] != null, ap);
+      TimeOfDay? end;
+      if (m[7] != null) {
+        final ap2 = (m[6] ?? m[10] ?? ap).toLowerCase();
+        end = _tod(int.parse(m[7]!), m[8], m[9] != null, ap2);
+      }
+      out.add((start, end));
+    }
+    // 英文 3pm / 3 pm
+    if (out.isEmpty) {
+      for (final m in RegExp(r'\b(\d{1,2})\s*(am|pm)\b', caseSensitive: false).allMatches(s)) {
+        out.add((_tod(int.parse(m[1]!), null, false, m[2]!.toLowerCase()), null));
+      }
+    }
+    return out;
+  }
+
+  TimeOfDay _tod(int h, String? mm, bool half, String ap) {
+    var hour = h;
+    final pm = ap.contains('下午') || ap.contains('晚') || ap.contains('傍') || ap.startsWith('p') ||
+        (ap.contains('中午') && h < 6);
+    if (pm && hour < 12) hour += 12;
+    if (ap.startsWith('a') && hour == 12) hour = 0;
+    final minute = half ? 30 : (mm == null ? 0 : int.parse(mm));
+    return TimeOfDay(hour: hour.clamp(0, 23), minute: minute.clamp(0, 59));
+  }
+
+  // ---------- 地点 / 金额 ----------
+  String _findLocation(String s) {
+    final m1 = RegExp(r'(地点|集合地点|地址|位置|location|venue|where)\s*[:：]\s*([^,，。;；\n]{2,30})',
+            caseSensitive: false)
+        .firstMatch(s);
+    if (m1 != null) return m1[2]!.trim();
+    final m2 = RegExp(r'在([^\s,，。;；]{2,15}?)(举行|举办|集合|进行|召开|开展|上课)').firstMatch(s);
+    if (m2 != null) return m2[1]!;
+    final m3 = RegExp(r'\b(?:at|in) (the )?([A-Z][\w ]{2,25}?(?:gym|hall|room|library|cafeteria|auditorium|field|park|school|center|centre))',
+            caseSensitive: false)
+        .firstMatch(s);
+    if (m3 != null) return m3[2]!.trim();
+    return '';
+  }
+
+  double? _findAmount(String s) {
+    final m = RegExp(r'(?:[¥￥\$]\s*(\d+(?:\.\d{1,2})?))|(?:(\d+(?:\.\d{1,2})?)\s*(?:元|块|dollars?|rmb|usd))',
+            caseSensitive: false)
+        .firstMatch(s);
+    if (m == null) return null;
+    return double.tryParse(m[1] ?? m[2] ?? '');
+  }
+
+  // ---------- 标题 ----------
+  String _guessTitle(String t) {
+    final first = t.split('\n').map((e) => e.trim()).firstWhere((e) => e.isNotEmpty, orElse: () => '');
+    var s = first.replaceAll(RegExp(r'^(各位|亲爱的|尊敬的)?(家长|同学)们?[:：,，]?\s*(您好|你好|大家好)?[!！,，:：]?\s*'), '');
+    s = s.replaceAll(RegExp(r'^(dear |hi |hello )?(parents?|families|families and caregivers)[,:]?\s*', caseSensitive: false), '');
+    if (s.length > 28) {
+      final ev = _eventWordRe.firstMatch(s);
+      s = ev != null ? '${ev[0]}通知' : s.substring(0, 28);
+    }
+    return s.isEmpty ? '学校通知' : s;
+  }
+
+  String _eventTitle(String s, String? hint) {
+    final ev = _eventWordRe.firstMatch(s);
+    if (ev != null) {
+      final w = ev[0]!;
+      // 中文:带上前面的修饰(如"秋季运动会"、"三年级家长会")
+      // 修饰词只往前取到动词/介词为止:"将于8日开展视力筛查" → "视力筛查"
+      final m = RegExp('((?:(?!日|号|于|在|将|的|把|开展|举行|举办|召开|组织|进行|定于|安排|参加|观看)[\\u4e00-\\u9fa5]){0,6})${RegExp.escape(w)}').firstMatch(s);
+      return (m?[0] ?? w).trim();
+    }
+    if (hint != null && hint.trim().isNotEmpty) return hint.trim();
+    final c = s.replaceAll(RegExp(r'[\d]{1,4}\s*[年月日号:：点时分/.-]+\s*'), '').trim();
+    return c.length > 20 ? c.substring(0, 20) : (c.isEmpty ? '学校活动' : c);
+  }
+
+  String _actionTitle(ItemType t, String s, String? hint) {
+    final h = (hint ?? '').trim();
+    switch (t) {
+      case ItemType.sign:
+        final m = RegExp(r'([一-龥]{2,10})(回执|确认单|同意书|知情书|签字)').firstMatch(s);
+        return m != null ? '签字:${m[0]}' : (h.isNotEmpty ? '签字:$h' : '签字回执');
+      case ItemType.pay:
+        final m = RegExp(r'(报名费|餐费|书本费|校服费|班费|活动费|保险费|材料费|费用|fee|payment)', caseSensitive: false).firstMatch(s);
+        return m != null ? '缴费:${m[0]}' : (h.isNotEmpty ? '缴费:$h' : '缴费');
+      case ItemType.bring:
+        final m = RegExp(r'(?:自备|携带|带好|带上|准备好|带|穿|bring|wear|pack)\s*[:：]?\s*([^,，。;；\n]{1,20})', caseSensitive: false).firstMatch(s);
+        return m != null ? '带:${m[1]!.trim()}' : '要带的东西';
+      case ItemType.deadline:
+        final m = RegExp(r'(报名|提交|上交|回复|填写|登记|注册|预约|register|submit|rsvp|reply)', caseSensitive: false).firstMatch(s);
+        return m != null ? '截止:${m[0]}' : (h.isNotEmpty ? '截止:$h' : '截止事项');
+      case ItemType.event:
+        return _eventTitle(s, hint);
+    }
+  }
+
+  double _conf(double dateConf, String s, {bool action = false}) {
+    var c = dateConf;
+    if (_eventWordRe.hasMatch(s)) c += 0.05;
+    if (action && _deadlineRe.hasMatch(s)) c += 0.05;
+    return c.clamp(0.0, 0.98);
+  }
+
+  /// 含有匹配的那一整句(给确认页看依据用)
+  String _sentenceWith(List<String> ss, RegExp re) =>
+      ss.firstWhere((s) => re.hasMatch(s), orElse: () => '');
+
+  List<String> _summary(List<ExtractedItem> items, bool reschedule) {
+    final out = <String>[];
+    if (reschedule) out.add('⚠ 这条通知含有改期/取消字样,请核对旧日程');
+    final ev = items.where((e) => e.type == ItemType.event).length;
+    final act = items.length - ev;
+    if (ev > 0) out.add('识别到 $ev 个日程');
+    if (act > 0) out.add('识别到 $act 项要家长办的事');
+    if (items.isEmpty) out.add('没有识别到日期,可手动添加');
+    return out;
+  }
+}

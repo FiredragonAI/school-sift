@@ -1,0 +1,46 @@
+name: school_sift
+description: "学校通 · SchoolSift —— 把学校通知变成家庭日程、签字袋、成绩与学习记录"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # 状态与存储(本机优先:数据只存在手机/浏览器里)
+  provider: ^6.1.2
+  shared_preferences: ^2.3.2
+
+  # 影像:拍纸质通知 / 签字单,纯 Dart 缩图后以 base64 入库
+  image_picker: ^1.1.2
+  image: ^4.2.0
+
+  # 导出:分享 .ics / JSON 备份;Web 端走浏览器下载
+  share_plus: ^10.1.4
+  web: ^1.1.0
+  http: ^1.2.2
+
+  # 展示
+  fl_chart: ^0.69.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # Noto Sans SC 子集(SIL OFL):Web 端(CanvasKit)没有系统字体可回退,
+  # 不打包则首帧汉字是 □;由 tools/fontsubset/subset.mjs 生成。
+  fonts:
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.otf
+        - asset: assets/fonts/NotoSansSC-Bold.otf
+          weight: 700

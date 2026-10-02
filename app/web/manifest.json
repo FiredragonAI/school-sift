@@ -1,0 +1,35 @@
+{
+    "name": "学校通 · SchoolSift",
+    "short_name": "学校通",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#2E6BE6",
+    "theme_color": "#2E6BE6",
+    "description": "把学校通知变成家庭日程、签字袋、成绩与学习记录",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

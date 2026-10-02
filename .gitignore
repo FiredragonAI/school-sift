@@ -1,0 +1,17 @@
+# Flutter
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.idea/
+*.iml
+.DS_Store
+
+# Android 签名(绝不能进版本库)
+app/android/key.properties
+app/android/*.jks
+app/android/app/*.jks
+*.keystore
+
+# 字体裁剪工具的依赖
+app/tools/fontsubset/node_modules/

@@ -1,0 +1,62 @@
+# 把 Flutter Web 版部署到 GitHub Pages。
+#
+# 推 main 就自动:装 Flutter → 构建 Web(release)→ 把隐私政策一起放进去 → 发布。
+# 站点地址形如 https://<组织>.github.io/<仓库名>/,所以 base-href 取仓库名。
+#
+# 首次需要在仓库 Settings → Pages 把 Source 设为 "GitHub Actions"(或用
+# `gh api repos/<owner>/<repo>/pages -X POST -f build_type=workflow`),之后不用再管。
+
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.3'   # 与本机一致;升级时同步改
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      - name: Build web
+        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+
+      - name: Bundle privacy policy alongside the app
+        run: cp ../docs/privacy-policy.html build/web/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
