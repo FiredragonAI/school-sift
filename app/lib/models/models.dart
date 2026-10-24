@@ -410,3 +410,109 @@ class StudyLog {
         teacherNote: j['teacherNote'] ?? '',
       );
 }
+
+// ---------- 用英文回复 ----------
+
+/// 写给谁 / 什么语气 / 邮件还是短信。枚举名直接写进 prompt 和存储。
+enum ReplyRecipient { teacher, office, nurse, coach, parent }
+
+enum ReplyTone { polite, firm, apology, followUp, thanks }
+
+enum ReplyFormat { email, text }
+
+T _byName<T extends Enum>(List<T> values, Object? name, T fallback) =>
+    values.where((e) => e.name == name).firstOrNull ?? fallback;
+
+/// 克制模式下的一处纠错:原文 → 改成,附原因。
+class ReplyChange {
+  final String before;
+  final String after;
+  final String reason;
+  const ReplyChange({required this.before, required this.after, this.reason = ''});
+  Map<String, dynamic> toJson() => {'before': before, 'after': after, 'reason': reason};
+  factory ReplyChange.fromJson(Map<String, dynamic> j) =>
+      ReplyChange(before: j['before'] ?? '', after: j['after'] ?? '', reason: j['reason'] ?? '');
+}
+
+/// AI 写好的一封英文:主题(短信为空)、正文、中文回译、纠错清单、发送前要留意的地方。
+/// 署名占位 [Your name] 原样保存,显示时才填(见 ReplyWriter.applySignature)。
+class ReplyDraft {
+  final String subject;
+  final String english;
+  final String backTranslation;
+  final List<ReplyChange> changes;
+  final List<String> notes;
+  const ReplyDraft({
+    this.subject = '',
+    required this.english,
+    this.backTranslation = '',
+    this.changes = const [],
+    this.notes = const [],
+  });
+  Map<String, dynamic> toJson() => {
+        'subject': subject,
+        'english': english,
+        'backTranslation': backTranslation,
+        'changes': changes.map((e) => e.toJson()).toList(),
+        'notes': notes,
+      };
+  factory ReplyDraft.fromJson(Map<String, dynamic> j) => ReplyDraft(
+        subject: j['subject'] ?? '',
+        english: j['english'] ?? '',
+        backTranslation: j['backTranslation'] ?? '',
+        changes: ((j['changes'] as List?) ?? const [])
+            .map((e) => ReplyChange.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+        notes: ((j['notes'] as List?) ?? const []).cast<String>(),
+      );
+}
+
+/// 一封英文回信的记录:家长写了什么、选了什么、AI 回了什么。只存本机,随备份导出。
+class ReplyRecord {
+  final String id;
+  final DateTime createdAt;
+  final String noticeId; // 回的是哪条通知;'' = 从「更多」写的空白回信
+  final String noticeTitle; // 标题快照:通知删了也看得出回的是什么
+  final ReplyRecipient recipient;
+  final ReplyTone tone;
+  final ReplyFormat format;
+  final bool restrained; // 克制模式:家长自己写英文,只纠错
+  final String input; // 中文要点;克制模式下是英文草稿
+  final ReplyDraft draft;
+  const ReplyRecord({
+    required this.id,
+    required this.createdAt,
+    this.noticeId = '',
+    this.noticeTitle = '',
+    this.recipient = ReplyRecipient.teacher,
+    this.tone = ReplyTone.polite,
+    this.format = ReplyFormat.email,
+    this.restrained = false,
+    required this.input,
+    required this.draft,
+  });
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'createdAt': createdAt.toIso8601String(),
+        'noticeId': noticeId,
+        'noticeTitle': noticeTitle,
+        'recipient': recipient.name,
+        'tone': tone.name,
+        'format': format.name,
+        'restrained': restrained,
+        'input': input,
+        'draft': draft.toJson(),
+      };
+  factory ReplyRecord.fromJson(Map<String, dynamic> j) => ReplyRecord(
+        id: j['id'],
+        createdAt: DateTime.parse(j['createdAt']),
+        noticeId: j['noticeId'] ?? '',
+        noticeTitle: j['noticeTitle'] ?? '',
+        recipient: _byName(ReplyRecipient.values, j['recipient'], ReplyRecipient.teacher),
+        tone: _byName(ReplyTone.values, j['tone'], ReplyTone.polite),
+        format: _byName(ReplyFormat.values, j['format'], ReplyFormat.email),
+        restrained: j['restrained'] ?? false,
+        input: j['input'] ?? '',
+        draft: ReplyDraft.fromJson(Map<String, dynamic>.from((j['draft'] as Map?) ?? const {})),
+      );
+}

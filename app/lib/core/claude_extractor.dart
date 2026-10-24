@@ -5,6 +5,7 @@
 //   - 请求里带的是这一条通知的文字 / 照片 / PDF,别的数据不发
 //   - 用结构化输出(output_config.format = json_schema)保证返回能直接解析成 Extraction
 // 浏览器里直连需要 anthropic-dangerous-direct-browser-access 头,否则被 CORS 拦。
+// 发请求的 callClaudeJson 也给「用英文回复」(core/reply_writer.dart)用。
 
 import 'dart:convert';
 
@@ -29,13 +30,81 @@ class ClaudeError implements Exception {
   String toString() => message;
 }
 
+const _endpoint = 'https://api.anthropic.com/v1/messages';
+
+/// 发一次 Messages API 请求,用结构化输出拿回一个 JSON 对象。
+/// 通知识别和「用英文回复」共用这一条路:同样的浏览器直连头、同样的错误映射。
+Future<Map<String, dynamic>> callClaudeJson({
+  required String apiKey,
+  required String model,
+  required String system,
+  required List<Map<String, dynamic>> content,
+  required Map<String, dynamic> schema,
+  http.Client? client,
+  int maxTokens = 8000,
+  String truncatedMessage = '输出被截断,请把内容拆短一点再试',
+}) async {
+  final isHaiku = model.contains('haiku');
+  final body = <String, dynamic>{
+    'model': model,
+    'max_tokens': maxTokens,
+    'system': system,
+    'messages': [
+      {'role': 'user', 'content': content},
+    ],
+    'output_config': {
+      if (!isHaiku) 'effort': 'low', // 抽取和写短信都不需要深思;Haiku 不认 effort
+      'format': {'type': 'json_schema', 'schema': schema},
+    },
+    if (!isHaiku) 'fallbacks': 'default', // 安全分类器误判时服务端自动换模型重试
+  };
+  final headers = {
+    'content-type': 'application/json',
+    'x-api-key': apiKey.trim(),
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true',
+    if (!isHaiku) 'anthropic-beta': 'server-side-fallback-2026-07-01',
+  };
+
+  final c = client ?? http.Client();
+  http.Response res;
+  try {
+    res = await c.post(Uri.parse(_endpoint), headers: headers, body: jsonEncode(body)).timeout(const Duration(seconds: 120));
+  } catch (e) {
+    throw ClaudeError('网络错误:$e');
+  } finally {
+    if (client == null) c.close();
+  }
+  if (res.statusCode != 200) {
+    String msg = 'HTTP ${res.statusCode}';
+    try {
+      final j = jsonDecode(utf8.decode(res.bodyBytes));
+      msg = j['error']?['message']?.toString() ?? msg;
+    } catch (_) {}
+    if (res.statusCode == 401) msg = 'API key 无效($msg)';
+    if (res.statusCode == 429) msg = '请求太频繁或额度不足($msg)';
+    throw ClaudeError(msg, status: res.statusCode);
+  }
+  final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+  final stop = j['stop_reason'];
+  if (stop == 'refusal') {
+    throw const ClaudeError('模型拒绝处理这条内容(安全策略)');
+  }
+  if (stop == 'max_tokens') {
+    throw ClaudeError(truncatedMessage);
+  }
+  final textBlock = (j['content'] as List).cast<Map<String, dynamic>>().firstWhere(
+        (b) => b['type'] == 'text',
+        orElse: () => throw const ClaudeError('返回里没有文本'),
+      );
+  return jsonDecode(textBlock['text'] as String) as Map<String, dynamic>;
+}
+
 class ClaudeExtractor {
   final String apiKey;
   final String model;
   final http.Client _client;
   ClaudeExtractor({required this.apiKey, required this.model, http.Client? client}) : _client = client ?? http.Client();
-
-  static const _endpoint = 'https://api.anthropic.com/v1/messages';
 
   /// 返回结构的 JSON Schema。日期 YYYY-MM-DD、时间 HH:MM,拿不准就 null。
   static final Map<String, dynamic> schema = {
@@ -148,59 +217,16 @@ If an image is a photo of a paper notice, read it carefully including handwritin
         'text': text.trim().isEmpty ? 'Extract everything from the attached notice.' : 'Notice text:\n\n${text.trim()}',
       },
     ];
-    final isHaiku = model.contains('haiku');
-    final body = <String, dynamic>{
-      'model': model,
-      'max_tokens': 8000,
-      'system': systemPrompt(today: today, uiLang: uiLang),
-      'messages': [
-        {'role': 'user', 'content': content},
-      ],
-      'output_config': {
-        if (!isHaiku) 'effort': 'low', // 抽取不需要深思;Haiku 不认 effort
-        'format': {'type': 'json_schema', 'schema': schema},
-      },
-      if (!isHaiku) 'fallbacks': 'default', // 安全分类器误判时服务端自动换模型重试
-    };
-    final headers = {
-      'content-type': 'application/json',
-      'x-api-key': apiKey.trim(),
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-      if (!isHaiku) 'anthropic-beta': 'server-side-fallback-2026-07-01',
-    };
-
-    http.Response res;
-    try {
-      res = await _client
-          .post(Uri.parse(_endpoint), headers: headers, body: jsonEncode(body))
-          .timeout(const Duration(seconds: 120));
-    } catch (e) {
-      throw ClaudeError('网络错误:$e');
-    }
-    if (res.statusCode != 200) {
-      String msg = 'HTTP ${res.statusCode}';
-      try {
-        final j = jsonDecode(utf8.decode(res.bodyBytes));
-        msg = j['error']?['message']?.toString() ?? msg;
-      } catch (_) {}
-      if (res.statusCode == 401) msg = 'API key 无效($msg)';
-      if (res.statusCode == 429) msg = '请求太频繁或额度不足($msg)';
-      throw ClaudeError(msg, status: res.statusCode);
-    }
-    final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-    final stop = j['stop_reason'];
-    if (stop == 'refusal') {
-      throw const ClaudeError('模型拒绝处理这条内容(安全策略)');
-    }
-    if (stop == 'max_tokens') {
-      throw const ClaudeError('输出被截断,请把通知拆短一点再试');
-    }
-    final textBlock = (j['content'] as List).cast<Map<String, dynamic>>().firstWhere(
-          (b) => b['type'] == 'text',
-          orElse: () => throw const ClaudeError('返回里没有文本'),
-        );
-    return parseResult(jsonDecode(textBlock['text'] as String) as Map<String, dynamic>);
+    final j = await callClaudeJson(
+      apiKey: apiKey,
+      model: model,
+      system: systemPrompt(today: today, uiLang: uiLang),
+      content: content,
+      schema: schema,
+      client: _client,
+      truncatedMessage: '输出被截断,请把通知拆短一点再试',
+    );
+    return parseResult(j);
   }
 
   /// 把模型返回的 JSON 映射成和规则解析器相同的 Extraction(确认页不用区分来源)。

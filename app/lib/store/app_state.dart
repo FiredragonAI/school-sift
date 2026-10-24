@@ -29,6 +29,7 @@ class AppState extends ChangeNotifier {
   List<Task> tasks = [];
   List<Grade> grades = [];
   List<StudyLog> logs = [];
+  List<ReplyRecord> replies = []; // 「用英文回复」的历史,新的在前
   Settings settings = Settings();
   bool loaded = false;
   bool demoLoaded = false;
@@ -105,6 +106,7 @@ class AppState extends ChangeNotifier {
       'tasks': tasks.map((e) => e.toJson()).toList(),
       'grades': grades.map((e) => e.toJson()).toList(),
       'logs': logs.map((e) => e.toJson()).toList(),
+      'replies': replies.map((e) => e.toJson()).toList(),
     };
     if (withImages) {
       final ids = <String>{
@@ -155,6 +157,7 @@ class AppState extends ChangeNotifier {
     tasks = taskRows.map(Task.fromJson).toList();
     grades = rows('grades').map(Grade.fromJson).toList();
     logs = rows('logs').map(StudyLog.fromJson).toList();
+    replies = rows('replies').map(ReplyRecord.fromJson).toList();
     if (persist) _save(notify: notify);
   }
 
@@ -238,6 +241,8 @@ class AppState extends ChangeNotifier {
     for (final n in notices.where((e) => e.childId == id)) {
       n.imageIds.forEach(removeImage);
     }
+    // 回这个孩子的通知写的英文信也一起删(信里可能有孩子的事);空白回信不属于哪个孩子,留着
+    replies.removeWhere((r) => notices.any((n) => n.id == r.noticeId && n.childId == id));
     notices.removeWhere((e) => e.childId == id);
     if (filterChildId == id) filterChildId = '';
     _save();
@@ -417,6 +422,19 @@ class AppState extends ChangeNotifier {
     return n;
   }
 
+  // ---------- 用英文回复 ----------
+  void addReply(ReplyRecord r) {
+    replies.insert(0, r);
+    _save();
+  }
+
+  void removeReply(String id) {
+    replies.removeWhere((e) => e.id == id);
+    _save();
+  }
+
+  List<ReplyRecord> repliesTo(String noticeId) => replies.where((r) => r.noticeId == noticeId).toList();
+
   // ---------- CSV 导出(F04:数据随时可带走) ----------
 
   String exportCsv(String kind) {
@@ -476,6 +494,7 @@ class AppState extends ChangeNotifier {
     tasks = [];
     grades = [];
     logs = [];
+    replies = [];
     demoLoaded = false;
     filterChildId = '';
     _memImages.clear();

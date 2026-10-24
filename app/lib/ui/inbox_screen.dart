@@ -1,7 +1,7 @@
 // 通知收件箱(F01 / F02 / I07):
 //   列表  原文永远可搜(ParentSquare 被骂最多的一点)
 //   录入  粘贴文字 / 拍照 / 相册 / 截图 / PDF → 本机 OCR 或 Claude 识别 → 家长核对 → 写入日程/待办
-//   详情  原文 + 附图 + 已生成的条目,可随时重新识别
+//   详情  原文 + 附图 + 已生成的条目,可随时重新识别;「用英文回复」(见 reply_screen.dart)
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -18,6 +18,7 @@ import '../models/models.dart';
 import '../platform/ocr.dart' as ocr;
 import '../platform/pdf_raster.dart';
 import '../store/app_state.dart';
+import 'reply_screen.dart';
 import 'widgets.dart';
 
 class InboxScreen extends StatefulWidget {
@@ -113,30 +114,35 @@ void openNotice(BuildContext context, Notice n, {bool review = false}) {
 }
 
 /// 调 AI 前的一次性告知(隐私):说清发什么、发给谁、不发什么。
-Future<bool> ensureAiConsent(BuildContext context) async {
+/// [reply]:「用英文回复」发的是家长写的要点,内容不同,单独告知、单独记同意。
+Future<bool> ensureAiConsent(BuildContext context, {bool reply = false}) async {
   final st = context.read<AppState>();
-  if (st.settings.aiConsent) return true;
+  if (reply ? st.settings.aiReplyConsent : st.settings.aiConsent) return true;
   final s = S.read(context);
   var remember = true;
   final ok = await showDialog<bool>(
     context: context,
     builder: (c) => StatefulBuilder(
       builder: (c, setS) => AlertDialog(
-        title: Text(s.aiConsentTitle),
+        title: Text(reply ? s.replyConsentTitle : s.aiConsentTitle),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(s.aiConsentBody),
+          Text(reply ? s.replyConsentBody : s.aiConsentBody),
           const SizedBox(height: 8),
           CheckboxListTile(value: remember, onChanged: (v) => setS(() => remember = v ?? true), title: Text(s.aiConsentRemember), contentPadding: EdgeInsets.zero, controlAffinity: ListTileControlAffinity.leading),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(c, false), child: Text(s.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(s.aiConsentOk)),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(reply ? s.replyConsentOk : s.aiConsentOk)),
         ],
       ),
     ),
   );
   if (ok == true && remember) {
-    st.settings.aiConsent = true;
+    if (reply) {
+      st.settings.aiReplyConsent = true;
+    } else {
+      st.settings.aiConsent = true;
+    }
     st.saveSettings();
   }
   return ok == true;
@@ -541,6 +547,17 @@ class _NoticeDetailPageState extends State<NoticeDetailPage> {
             ]),
           ),
         ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(onPressed: () => openReplyComposer(context, noticeId: n.id), icon: const Icon(Icons.reply), label: Text(s.replyInEnglish)),
+        for (final r in st.repliesTo(n.id))
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.history, size: 20),
+            title: Text(r.input.split('\n').first, maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text('${s.recipientName(r.recipient)} · ${s.md(Day.of(r.createdAt))}'),
+            onTap: () => openReplyComposer(context, record: r),
+          ),
         const SizedBox(height: 12),
         if (busy)
           Padding(

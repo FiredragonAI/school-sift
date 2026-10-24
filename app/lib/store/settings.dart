@@ -1,4 +1,4 @@
-// 用户设置:AI 密钥(只存本机)、OCR 语言、提醒。和业务数据分开存,备份导出时不带密钥。
+// 用户设置:AI 密钥(只存本机)、OCR 语言、提醒、英文回信署名。和业务数据分开存,备份导出时不带密钥。
 
 class Settings {
   /// 用户自己的 Claude API key;空 = 不用 AI,走本机 OCR + 规则解析
@@ -6,6 +6,10 @@ class Settings {
   String model;
   /// 用户已看过并同意"调用 AI 会把这条通知发给 Anthropic"的提示
   bool aiConsent;
+  /// 「用英文回复」发的是家长写的要点,和通知识别分开告知、分开记同意
+  bool aiReplyConsent;
+  /// 英文回信的署名:只在本机替换 [Your name],不发给 AI
+  String replySignature;
   /// OCR 语言:auto(跟界面语言) / eng / chi
   String ocrLang;
   bool remindersEnabled;
@@ -17,6 +21,8 @@ class Settings {
     this.apiKey = '',
     this.model = defaultModel,
     this.aiConsent = false,
+    this.aiReplyConsent = false,
+    this.replySignature = '',
     this.ocrLang = 'auto',
     this.remindersEnabled = true,
     this.briefEnabled = true,
@@ -40,6 +46,8 @@ class Settings {
         'apiKey': apiKey,
         'model': model,
         'aiConsent': aiConsent,
+        'aiReplyConsent': aiReplyConsent,
+        'replySignature': replySignature,
         'ocrLang': ocrLang,
         'remindersEnabled': remindersEnabled,
         'briefEnabled': briefEnabled,
@@ -51,6 +59,8 @@ class Settings {
         apiKey: j['apiKey'] ?? '',
         model: j['model'] ?? defaultModel,
         aiConsent: j['aiConsent'] ?? false,
+        aiReplyConsent: j['aiReplyConsent'] ?? false,
+        replySignature: j['replySignature'] ?? '',
         ocrLang: j['ocrLang'] ?? 'auto',
         remindersEnabled: j['remindersEnabled'] ?? true,
         briefEnabled: j['briefEnabled'] ?? true,
