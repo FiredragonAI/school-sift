@@ -1,7 +1,7 @@
 name: school_sift
 description: "学校通 · SchoolSift —— 把学校通知变成家庭日程、签字袋、成绩与学习记录"
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
@@ -38,6 +38,7 @@ dependencies:
 
   # 展示
   fl_chart: ^0.69.0
+  url_launcher: ^6.3.3              # 原生端用系统浏览器打开链接(Google 日历、反馈表单)
 
 dev_dependencies:
   flutter_test:

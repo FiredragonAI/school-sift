@@ -10,6 +10,8 @@ class Settings {
   bool aiReplyConsent;
   /// 英文回信的署名:只在本机替换 [Your name],不发给 AI
   String replySignature;
+  /// 第 3 封回信后的反馈卡已经处理过(发送或关掉),不再自动出现;回信记录页里还能手动打开
+  bool replyFeedbackHandled;
   /// OCR 语言:auto(跟界面语言) / eng / chi
   String ocrLang;
   bool remindersEnabled;
@@ -23,6 +25,7 @@ class Settings {
     this.aiConsent = false,
     this.aiReplyConsent = false,
     this.replySignature = '',
+    this.replyFeedbackHandled = false,
     this.ocrLang = 'auto',
     this.remindersEnabled = true,
     this.briefEnabled = true,
@@ -31,7 +34,7 @@ class Settings {
   });
 
   /// 显示用版本号;发版时与 pubspec.yaml 同步改
-  static const appVersion = '0.2.0';
+  static const appVersion = '0.3.0';
 
   static const defaultModel = 'claude-opus-5-5';
   static const models = <(String, String)>[
@@ -48,6 +51,7 @@ class Settings {
         'aiConsent': aiConsent,
         'aiReplyConsent': aiReplyConsent,
         'replySignature': replySignature,
+        'replyFeedbackHandled': replyFeedbackHandled,
         'ocrLang': ocrLang,
         'remindersEnabled': remindersEnabled,
         'briefEnabled': briefEnabled,
@@ -61,6 +65,7 @@ class Settings {
         aiConsent: j['aiConsent'] ?? false,
         aiReplyConsent: j['aiReplyConsent'] ?? false,
         replySignature: j['replySignature'] ?? '',
+        replyFeedbackHandled: j['replyFeedbackHandled'] ?? false,
         ocrLang: j['ocrLang'] ?? 'auto',
         remindersEnabled: j['remindersEnabled'] ?? true,
         briefEnabled: j['briefEnabled'] ?? true,

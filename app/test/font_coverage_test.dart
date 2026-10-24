@@ -43,6 +43,16 @@ void main() {
         expect(font.advance(g), lessThan(font.unitsPerEm), reason: '${_hex(c)} ${String.fromCharCode(c)} 是全角字形');
       }
     });
+
+    // 美国学校里的人名(José、Peña、Zoë、Müller)家长会手输,Latin-1 字母要在包里且是比例宽度
+    test('NotoSansSC-$weight 含 Latin-1 字母(比例宽度)', () {
+      for (var c = 0xC0; c <= 0xFF; c++) {
+        if (c == 0xD7 || c == 0xF7) continue; // × ÷ 在 SC 版是全角,不算字母
+        expect(font.cmap.containsKey(c), isTrue, reason: '${_hex(c)} ${String.fromCharCode(c)} 不在字体里');
+        expect(font.advance(font.cmap[c]!), lessThan(font.unitsPerEm), reason: '${_hex(c)} ${String.fromCharCode(c)} 是全角字形');
+      }
+      expect(font.cmap.containsKey(0x2018), isTrue, reason: '‘ 不在字体里');
+    });
   }
 }
 

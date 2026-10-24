@@ -8,9 +8,11 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
+import '../core/reply_feedback.dart';
 import '../core/reply_writer.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
+import '../platform/export.dart';
 import '../store/app_state.dart';
 import 'inbox_screen.dart';
 import 'settings_screen.dart';
@@ -230,6 +232,11 @@ class _ReplyComposePageState extends State<ReplyComposePage> {
             if (result != null) ...[
               const SizedBox(height: 20),
               ReplyResultView(key: resultKey, record: result!, signature: signature.text),
+              // 只在本次刚写完时出现(从历史打开旧信不出现),第 3 封起、处理过一次就不再自动出现
+              if (widget.record == null && shouldOfferFeedback(replyCount: st.replies.length, alreadyHandled: st.settings.replyFeedbackHandled)) ...[
+                const SizedBox(height: 12),
+                const ReplyFeedbackCard(),
+              ],
             ],
           ]),
         ),
@@ -424,7 +431,17 @@ class ReplyHistoryPage extends StatelessWidget {
     final s = S.of(context);
     final st = context.watch<AppState>();
     return Scaffold(
-      appBar: AppBar(title: Text(s.replyHistory)),
+      appBar: AppBar(
+        title: Text(s.replyHistory),
+        actions: [
+          if (st.replies.isNotEmpty)
+            TextButton.icon(
+              onPressed: () => showReplyFeedbackSheet(context),
+              icon: const Icon(Icons.feedback_outlined),
+              label: Text(s.fbMenu),
+            ),
+        ],
+      ),
       body: st.replies.isEmpty
           ? EmptyState(icon: Icons.history, text: s.replyHistoryEmpty)
           : ListView.builder(
@@ -456,6 +473,138 @@ class ReplyHistoryPage extends StatelessWidget {
                 );
               },
             ),
+    );
+  }
+}
+
+/// 回信记录页「反馈」:关掉卡片后想再给反馈也能找到。
+Future<void> showReplyFeedbackSheet(BuildContext context) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (c) => Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.viewInsetsOf(c).bottom),
+      child: const SingleChildScrollView(child: ReplyFeedbackCard(inSheet: true)),
+    ),
+  );
+}
+
+/// 反馈卡(衡量方式见 core/reply_feedback.dart):有用 / 一般 / 没用 + 要不要键盘 + 可选一句话。
+/// 不点「打开反馈表单 / 复制反馈」就什么都不发;点了或关掉都记为已处理,不再自动出现。
+class ReplyFeedbackCard extends StatefulWidget {
+  final bool inSheet;
+  const ReplyFeedbackCard({super.key, this.inSheet = false});
+  @override
+  State<ReplyFeedbackCard> createState() => _ReplyFeedbackCardState();
+}
+
+class _ReplyFeedbackCardState extends State<ReplyFeedbackCard> {
+  FeedbackRating? rating;
+  bool keyboard = false;
+  final comment = TextEditingController();
+
+  @override
+  void dispose() {
+    comment.dispose();
+    super.dispose();
+  }
+
+  String _ratingLabel(S s, FeedbackRating r) => switch (r) {
+        FeedbackRating.useful => s.fbUseful,
+        FeedbackRating.okay => s.fbOkay,
+        FeedbackRating.notUseful => s.fbNotUseful,
+      };
+
+  void _markHandled() {
+    final st = context.read<AppState>();
+    st.settings.replyFeedbackHandled = true;
+    st.saveSettings();
+  }
+
+  void _snack(String m) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), persist: false));
+
+  Future<void> _send() async {
+    final s = S.read(context);
+    final st = context.read<AppState>();
+    if (rating == null) {
+      _snack(s.fbPickRating);
+      return;
+    }
+    final uri = feedbackFormUri(kFeedbackFormUrl, rating: rating!, replyCount: st.replies.length, wantsKeyboard: keyboard, lang: st.language);
+    if (uri != null) {
+      // 留言不进 URL:先复制,家长在表单里粘贴
+      if (comment.text.trim().isNotEmpty) {
+        await Clipboard.setData(ClipboardData(text: comment.text.trim()));
+        if (mounted) _snack(s.fbCommentCopied);
+      }
+      await openUrl(uri.toString());
+    } else {
+      final text = feedbackPlainText(
+        header: s.fbHeader,
+        ratingLabel: s.fbRatingLine(_ratingLabel(s, rating!)),
+        keyboardLabel: keyboard ? s.fbWantsKeyboard : s.fbNoKeyboard,
+        replyCount: st.replies.length,
+        countLabel: s.fbCountLabel,
+        comment: comment.text,
+      );
+      await Clipboard.setData(ClipboardData(text: text));
+      if (mounted) _snack(s.fbCopied);
+    }
+    if (!mounted) return;
+    _markHandled();
+    if (widget.inSheet) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    final theme = Theme.of(context);
+    final hasForm = kFeedbackFormUrl.trim().isNotEmpty;
+    final content = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Icon(Icons.feedback_outlined, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
+        Expanded(child: Text(s.fbTitle, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+      ]),
+      const SizedBox(height: 6),
+      Text(s.fbBody, style: theme.textTheme.bodySmall),
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 4, children: [
+        for (final r in FeedbackRating.values)
+          ChoiceChip(label: Text(_ratingLabel(s, r)), selected: rating == r, onSelected: (_) => setState(() => rating = r)),
+      ]),
+      CheckboxListTile(
+        contentPadding: EdgeInsets.zero,
+        controlAffinity: ListTileControlAffinity.leading,
+        value: keyboard,
+        onChanged: (v) => setState(() => keyboard = v ?? false),
+        title: Text(s.fbKeyboard, style: theme.textTheme.bodyMedium),
+      ),
+      TextField(controller: comment, minLines: 1, maxLines: 4, decoration: InputDecoration(labelText: s.fbComment)),
+      const SizedBox(height: 8),
+      Text(hasForm ? s.fbPrivacy : s.fbPrivacyCopy, style: theme.textTheme.bodySmall),
+      const SizedBox(height: 8),
+      OverflowBar(alignment: MainAxisAlignment.end, spacing: 8, children: [
+        TextButton(
+          onPressed: () {
+            _markHandled();
+            if (widget.inSheet) Navigator.of(context).pop();
+          },
+          child: Text(s.fbDismiss),
+        ),
+        FilledButton.icon(
+          onPressed: _send,
+          icon: Icon(hasForm ? Icons.open_in_new : Icons.copy_all_outlined, size: 18),
+          label: Text(hasForm ? s.fbSendForm : s.fbCopy),
+        ),
+      ]),
+    ]);
+    if (widget.inSheet) return content;
+    return Card(
+      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
+      child: Padding(padding: const EdgeInsets.all(14), child: content),
     );
   }
 }

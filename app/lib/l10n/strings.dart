@@ -305,6 +305,30 @@ class S {
   String get share => t('分享', 'Share');
   String get replyHistory => t('回信记录', 'Reply history');
   String get replyHistoryEmpty => t('还没有写过英文回信', 'No replies yet');
+
+  // 回信反馈卡(第 3 封后出现一次;不点发送就什么都不发)
+  String get fbTitle => t('「用英文回复」对你有用吗?', 'Is “Reply in English” useful to you?');
+  String get fbBody => t('你已经写了 3 封以上。花 10 秒告诉我们感受,帮我们决定下一步做什么。', 'You’ve written 3+ replies. Ten seconds of feedback helps us decide what to build next.');
+  String get fbUseful => t('有用', 'Useful');
+  String get fbOkay => t('一般', 'It’s OK');
+  String get fbNotUseful => t('没用', 'Not useful');
+  String get fbKeyboard => t('想要能在任何 App(微信、邮件、WhatsApp)里直接用的中英键盘', 'I’d like a Chinese→English keyboard that works in any app (email, WhatsApp…)');
+  String get fbComment => t('想说的话(可选)', 'Anything else? (optional)');
+  String get fbSendForm => t('打开反馈表单', 'Open feedback form');
+  String get fbCopy => t('复制反馈', 'Copy feedback');
+  String get fbDismiss => t('不了,谢谢', 'No thanks');
+  String get fbPrivacy => t('不点按钮就什么都不会发送。表单里只预填你上面选的三项和回信条数;留言和联系方式由你在表单里自己填。', 'Nothing is sent unless you tap. The form is pre-filled only with your choices above and your reply count; any comment or contact you add yourself in the form.');
+  String get fbPrivacyCopy => t('不点按钮就什么都不会发送。「复制反馈」只是把上面的内容放进剪贴板,由你自己决定贴到哪里。', 'Nothing is sent unless you tap. “Copy feedback” only puts the text on your clipboard — you decide where to paste it.');
+  String get fbCopied => t('已复制,贴到家长群或发给推荐你用学校通的人就好', 'Copied — paste it into your parents’ group or send it to whoever told you about SchoolSift');
+  String get fbCommentCopied => t('你的留言已复制,可以在表单里粘贴', 'Your comment is copied — paste it into the form');
+  String get fbThanks => t('谢谢你的反馈!', 'Thanks for the feedback!');
+  String get fbPickRating => t('先选一下有用 / 一般 / 没用', 'Pick Useful / OK / Not useful first');
+  String get fbHeader => t('学校通「用英文回复」反馈', 'SchoolSift “Reply in English” feedback');
+  String get fbCountLabel => t('已写回信', 'Replies written');
+  String get fbWantsKeyboard => t('想要中英键盘:是', 'Wants keyboard: yes');
+  String get fbNoKeyboard => t('想要中英键盘:否', 'Wants keyboard: no');
+  String get fbMenu => t('反馈', 'Feedback');
+  String fbRatingLine(String r) => t('评价:$r', 'Rating: $r');
   String get replyNoKeyTitle => t('需要 Claude API key', 'Needs a Claude API key');
   String get replyNoKeyBody => t('这个功能用你自己的 key 调 Claude(每封约 \$0.01–0.03)。在设置里填一个就能用。', 'This uses Claude with your own key (about \$0.01–0.03 per message). Add one in Settings.');
   String get goSettings => t('去设置', 'Settings');

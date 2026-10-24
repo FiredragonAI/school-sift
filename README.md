@@ -31,12 +31,15 @@
 | **成长 · 成绩** | 按孩子 / 科目 / 日期记测验成绩(可填满分、班均),科目卡片 + 趋势折线 + 班均虚线 | — |
 | **成长 · 学习记录** | 每日作业完成 / 阅读分钟 / 专注度 / 一句话 / **老师反馈**;连续打卡;近 14 天柱状 | — |
 | **成长 · 签字袋** | 纸质回执拍照存档,追踪到交回 | F03 |
+| **用英文回复** | 通知详情「用英文回复」(带上通知原文)或 更多「用英文写信」:中文写要点 → 选写给谁和语气 → 得体的英文邮件/短信 + **中文回译**;克制模式只纠错不重写;复制、分享、本机历史。写到第 3 封后出现一次可选的反馈卡 | K4.3 |
 | **更多** | 多孩子(各自颜色)、家庭成员、中 / 英文、**设置**(AI key、OCR 语言、提醒)、JSON 备份(含图片)与恢复、**四张 CSV 导出** | F04 |
 
 ## 隐私
 
 - 所有数据只在你的设备上:Android 是应用私有目录,网页版是浏览器的 IndexedDB。没有账号、没有我们的服务器、没有统计 SDK。
 - 本机 OCR 的图片不离开设备。
+- 网页版启动不连任何外部域名(字体、CanvasKit 引擎都从本站加载);只有用到 OCR 时才从 jsdelivr 加载 Tesseract.js。
+- 「用英文回复」的反馈卡:不点按钮什么都不发;点了才打开反馈表单(只预填评分、回信条数、要不要键盘)或复制成文字。
 - **只有你主动点「用 AI 识别」时**,这一条通知的文字和附图才会用你自己的 API key 直接发给 Anthropic(api.anthropic.com),不经过任何中间服务器;第一次会弹窗说明发什么、不发什么(孩子姓名、成绩、其他通知都不发)。API key 只存在本机,不随备份导出。
 - [隐私政策](docs/privacy-policy.html)
 
@@ -66,11 +69,12 @@ flutter build apk --release --split-per-abi   # 需要 android/key.properties,�
 ```
 
 - 存储:Hive CE(`store/app_state.dart`),图片单独一个 box;0.1 版 localStorage 数据首次启动自动迁移。
-- 字体:Web 端没有系统字体,`assets/fonts/` 里是 Noto Sans SC 的子集(SIL OFL),由 `tools/fontsubset/subset.mjs` 生成(subset-font 必须锁 2.7.0),只留简体用到的字形和横排默认版式,每个字重约 1.7 MB;App 要用别的 OpenType feature(FontFeature)得加进脚本里的 `FEATURES` 重裁。界面文案新用了符号或生僻字要重新裁剪,`test/font_coverage_test.dart` 会拦住漏掉的字符(harfbuzz 版:`node tools/fontsubset/check.mjs`)。
+- 字体:Web 端没有系统字体,`assets/fonts/` 里是 Noto Sans SC 的子集(SIL OFL),由 `tools/fontsubset/subset.mjs` 生成(subset-font 必须锁 2.7.0),字符集 = lib/ 用到的字 + GB2312 + CJK 标点/全角 + Latin-1(José、Peña 这类人名),只留简体用到的字形和横排默认版式,每个字重约 1.8 MB;App 要用别的 OpenType feature(FontFeature)得加进脚本里的 `FEATURES` 重裁。界面文案新用了符号或生僻字要重新裁剪,`test/font_coverage_test.dart` 会拦住漏掉的字符(harfbuzz 版:`node tools/fontsubset/check.mjs`)。
 - 图标:`GEN_ICON=1 flutter test test/tools/gen_icon_test.dart` 重新生成 Android / Web 全部尺寸。
 - OCR:Web 端按需从 jsdelivr 加载 Tesseract.js(首次下载语言包);Android 端 ML Kit 拉丁 + 中文模型打进 APK。
 - 提醒:Android 用 `flutter_local_notifications` 不精确闹钟(不需要 SCHEDULE_EXACT_ALARM);每次数据变动 3 秒后整体重排。
-- 部署:推 `main` 后 `.github/workflows/pages.yml` 自动跑 analyze + test + build 并发布到 GitHub Pages。
+- 部署:推 `main` 后 `.github/workflows/pages.yml` 自动跑 analyze + test + build 并发布到 GitHub Pages。构建带 `--no-web-resources-cdn`(CanvasKit 与 Roboto 自托管,启动不连 gstatic)。
+- 反馈表单:在仓库 Settings → Secrets and variables → Actions → **Variables** 里加 `FEEDBACK_FORM_URL`(如 Tally / Google 表单地址),可用占位符 `{rating}` `{count}` `{keyboard}` `{lang}` 预填;本地构建用 `--dart-define=FEEDBACK_FORM_URL=...`。不设就只有「复制反馈」。
 
 ## 路线图
 

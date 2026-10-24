@@ -8,6 +8,7 @@
 //   1. lib/ 下所有 .dart 源码里出现的非 ASCII 字符(界面文案,包括 → · — … ✓ ⚠ ▲ 这类符号)
 //   2. GB2312 全部 6763 个汉字(一级 3755 + 二级 3008),兜住用户手输的学校名/人名
 //   3. CJK 标点区 U+3000–U+303F(、。「」《》…)与全角区 U+FF00–U+FFEF(全角标点/数字/字母)
+//   4. Latin-1 补充区 U+00A0–U+00FF 与 ‘(é ñ ü 等,美国学校里的人名)
 //   外加 ASCII 可见字符(含数字、字母)。生僻字仍走引擎的网络回退。
 //
 // 改了界面文案就要重跑:第 1 部分是跑脚本那一刻 lib/ 的快照。首版字体是在界面文案写出来之前
@@ -107,8 +108,18 @@ for (const [lo, hi] of [[0x3000, 0x303f], [0xff00, 0xffef]]) {
   }
 }
 
+// ---- 4. Latin-1 补充区 U+00A0–00FF + 左单引号 ‘ ----
+// 首批用户在美国:老师 / 同学 / 学校的名字(José、Peña、Zoë、Ms. Müller)家长会手输或从英文通知里粘进来,
+// 不在包里时 Web 端要等 CDN,连不上就是 □。两遍裁法下每个字重只多约 8 KB(2026-10-24 用户同意加)。
+// 注意:SC 版的 § ± ¶ × ÷ 是全角字形(× 界面里一直在用,看着没问题),这里不改 cmap。
+let fromLatin1 = 0;
+for (const c of [...Array.from({ length: 0x100 - 0xa0 }, (_, i) => 0xa0 + i), 0x2018]) {
+  const ch = String.fromCodePoint(c);
+  if (!chars.has(ch)) { chars.add(ch); fromLatin1++; }
+}
+
 const text = [...chars].join('');
-console.log(`字符集:源码 ${fromSrc} + GB2312 ${fromGb} + 标点/全角 ${fromPunct} + ASCII 95 = ${chars.size}`);
+console.log(`字符集:源码 ${fromSrc} + GB2312 ${fromGb} + 标点/全角 ${fromPunct} + Latin-1 ${fromLatin1} + ASCII 95 = ${chars.size}`);
 
 // ---- 西文标点:找出子集里的比例宽度字形 ----
 // 日文 locl 下 · • ‘ ’ “ ” 排出来就是比例宽度字形,拿它们在(第一遍)子集里的字形号。
