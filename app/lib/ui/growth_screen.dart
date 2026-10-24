@@ -379,7 +379,8 @@ class _StudyTab extends StatelessWidget {
             ListTile(
               dense: true,
               leading: Text('⭐' * l.focus, style: const TextStyle(fontSize: 10)),
-              title: Text('${s.relative(l.day)} · ${l.homeworkDone ? '✓ ' : '✗ '}${s.homeworkDone} · ${l.readingMinutes} min'),
+              // 用 ×:打包的 Noto Sans SC 里没有 U+2717 BALLOT X,Web 端会去 CDN 找字
+              title: Text('${s.relative(l.day)} · ${l.homeworkDone ? '✓ ' : '× '}${s.homeworkDone} · ${l.readingMinutes} min'),
               subtitle: l.note.isEmpty && l.teacherNote.isEmpty
                   ? null
                   : Text([if (l.note.isNotEmpty) l.note, if (l.teacherNote.isNotEmpty) '🏫 ${l.teacherNote}'].join('\n')),

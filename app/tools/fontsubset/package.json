@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "harfbuzzjs": "0.10.3",
     "subset-font": "2.7.0"
   }
 }
