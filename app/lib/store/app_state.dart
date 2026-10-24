@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/money.dart';
 import '../models/models.dart';
 import 'demo_data.dart';
 import 'settings.dart';
@@ -443,9 +444,9 @@ class AppState extends ChangeNotifier {
         ];
       default:
         rows = [
-          ['child', 'kind', 'title', 'due', 'amount', 'assignee', 'status', 'created'],
+          ['child', 'kind', 'title', 'due', 'amount', 'currency', 'assignee', 'status', 'created'],
           for (final t in tasks..sort(_byDue))
-            [name(t.childId), t.kind.name, t.title, t.due?.key, t.amount, who(t.assigneeId), t.status.name, t.createdAt.toIso8601String()],
+            [name(t.childId), t.kind.name, t.title, t.due?.key, t.amount, t.amount == null ? null : t.currency ?? defaultCurrency, who(t.assigneeId), t.status.name, t.createdAt.toIso8601String()],
         ];
     }
     return '﻿${rows.map((r) => r.map(_csvCell).join(',')).join('\r\n')}'; // BOM 让 Excel 认 UTF-8

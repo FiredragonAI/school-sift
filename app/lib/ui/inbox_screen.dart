@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/claude_extractor.dart';
+import '../core/money.dart';
 import '../core/notice_parser.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
@@ -645,7 +646,7 @@ class _ReviewPanelState extends State<_ReviewPanel> {
                   evs.add(Event(id: newId(), childId: widget.notice.childId, title: it.title, day: it.day!, start: it.start, end: it.end, location: it.location, assigneeId: who[it] ?? '', noticeId: widget.notice.id));
                 } else {
                   final kind = it.type == ItemType.sign ? TaskKind.sign : it.type == ItemType.pay ? TaskKind.pay : it.type == ItemType.bring ? TaskKind.bring : TaskKind.other;
-                  ts.add(Task(id: newId(), childId: widget.notice.childId, kind: kind, title: it.title, due: it.day, amount: it.amount, assigneeId: who[it] ?? '', noticeId: widget.notice.id, imageId: kind == TaskKind.sign ? widget.notice.imageIds.firstOrNull : null, createdAt: DateTime.now()));
+                  ts.add(Task(id: newId(), childId: widget.notice.childId, kind: kind, title: it.title, due: it.day, amount: it.amount, currency: it.currency, assigneeId: who[it] ?? '', noticeId: widget.notice.id, imageId: kind == TaskKind.sign ? widget.notice.imageIds.firstOrNull : null, createdAt: DateTime.now()));
                 }
               }
               widget.onCommit(evs, ts);
@@ -716,12 +717,15 @@ class _ItemCard extends StatelessWidget {
             if (it.type == ItemType.pay) ...[
               const SizedBox(width: 8),
               SizedBox(
-                width: 100,
-                child: TextFormField(
-                  initialValue: it.amount == null ? '' : it.amount!.toStringAsFixed(it.amount! % 1 == 0 ? 0 : 2),
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: s.amount, isDense: true),
-                  onChanged: (v) => it.amount = double.tryParse(v),
+                width: 120,
+                child: AmountField(
+                  initialValue: it.amount == null ? '' : amountInput(it.amount!),
+                  onChanged: (v) => it.amount = parseAmount(v),
+                  currency: it.currency,
+                  onCurrency: (v) {
+                    it.currency = v;
+                    onChanged();
+                  },
                 ),
               ),
             ],

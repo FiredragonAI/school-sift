@@ -89,11 +89,12 @@ class DemoData {
 
     s.tasks = [
       Task(id: 't1', childId: a.id, kind: TaskKind.sign, title: z('签字:家长会回执', 'Sign: conference request form'), due: t.add(5), assigneeId: mom.id, noticeId: n1.id, createdAt: now),
-      Task(id: 't2', childId: a.id, kind: TaskKind.pay, title: z('缴费:课后服务费', 'Pay: after-school program fee'), due: t.add(4), amount: 300, assigneeId: dad.id, noticeId: n1.id, createdAt: now),
+      // 货币和识别结果一致:英文通知写的是 $300;中文通知只写了「300元」,没记货币,按美元显示
+      Task(id: 't2', childId: a.id, kind: TaskKind.pay, title: z('缴费:课后服务费', 'Pay: after-school program fee'), due: t.add(4), amount: 300, currency: en ? 'USD' : null, assigneeId: dad.id, noticeId: n1.id, createdAt: now),
       Task(id: 't3', childId: b.id, kind: TaskKind.sign, title: z('签字:校服订购单', 'Sign: spirit wear order form'), due: t.add(-1), assigneeId: mom.id, createdAt: now.subtract(const Duration(days: 4))),
       Task(id: 't4', childId: a.id, kind: TaskKind.bring, title: z('带:美术课水彩笔', 'Bring: markers for art'), due: t.add(1), createdAt: now),
       Task(id: 't5', childId: b.id, kind: TaskKind.sign, title: z('签字:上周听写本', 'Sign: last week’s spelling test'), due: t.add(-6), status: TaskStatus.submitted, createdAt: now.subtract(const Duration(days: 9))),
-      Task(id: 't6', childId: a.id, kind: TaskKind.pay, title: z('缴费:秋季校服', 'Pay: yearbook'), due: t.add(-12), amount: en ? 35 : 260, status: TaskStatus.done, createdAt: now.subtract(const Duration(days: 20))),
+      Task(id: 't6', childId: a.id, kind: TaskKind.pay, title: z('缴费:秋季校服', 'Pay: yearbook'), due: t.add(-12), amount: en ? 35 : 260, currency: en ? 'USD' : null, status: TaskStatus.done, createdAt: now.subtract(const Duration(days: 20))),
     ];
 
     final subj = en ? ['Reading', 'Math', 'Spelling'] : ['语文', '数学', '英语'];

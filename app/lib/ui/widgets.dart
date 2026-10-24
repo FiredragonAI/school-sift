@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../core/money.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../platform/export.dart';
@@ -359,6 +360,44 @@ class TimeField extends StatelessWidget {
           if (t != null) onChanged(t);
         },
         child: Text(value == null ? '—' : s.tod(value)),
+      ),
+    );
+  }
+}
+
+/// 金额输入框。前面的 $ / ¥ 是个按钮,点一下换货币(按 core/money.dart 的 currencies 轮换)。
+/// 待办编辑传 [controller],识别结果页传 [initialValue] + [onChanged]。
+class AmountField extends StatelessWidget {
+  final String? currency;
+  final ValueChanged<String> onCurrency;
+  final TextEditingController? controller;
+  final String? initialValue;
+  final ValueChanged<String>? onChanged;
+  const AmountField({super.key, required this.currency, required this.onCurrency, this.controller, this.initialValue, this.onChanged});
+  @override
+  Widget build(BuildContext context) {
+    final s = S.of(context);
+    return TextFormField(
+      controller: controller,
+      initialValue: initialValue,
+      onChanged: onChanged,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(
+        labelText: s.amount,
+        prefixIcon: Tooltip(
+          message: s.currencySwitch,
+          child: TextButton(
+            onPressed: () => onCurrency(nextCurrency(currency)),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(36, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            child: Text(currencySymbol(currency), semanticsLabel: s.currencyName(currency)),
+          ),
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
       ),
     );
   }
