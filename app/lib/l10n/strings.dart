@@ -248,6 +248,65 @@ class S {
   String get copiedShare => t('已复制,粘贴到微信 / 短信发出去', 'Copied — paste into WhatsApp / SMS');
   String get briefEmpty => t('今明两天没有安排', 'Nothing today or tomorrow');
 
+  // 用英文回复(ai-keyboard-research 报告 4.3:中文意思 → 得体英文 + 中文回译)
+  String get replyInEnglish => t('用英文回复', 'Reply in English');
+  String get replyWrite => t('用英文写信', 'Write in English');
+  String get replyWriteDesc => t('中文写要点,生成得体的英文邮件或短信,附中文回译', 'Jot your points in Chinese; get a polished English email or text, with a Chinese back-translation');
+  String get replyContext => t('回复', 'Replying to');
+  String get replyContextNote => t('通知原文会一起发给 AI 做参考', 'The notice text is sent along as context');
+  String get replyContextNoText => t('这条通知只有图片,AI 看不到原文,要点里写清楚就好。', 'This notice has images only, so the AI won’t see it — make your points self-contained.');
+  String get replyTo => t('写给谁', 'To');
+  String get replyToneLabel => t('语气', 'Tone');
+  String get replyFormatLabel => t('形式', 'Format');
+  String recipientName(ReplyRecipient r) => switch (r) {
+        ReplyRecipient.teacher => t('老师', 'Teacher'),
+        ReplyRecipient.office => t('学校办公室', 'School office'),
+        ReplyRecipient.nurse => t('校医', 'School nurse'),
+        ReplyRecipient.coach => t('教练', 'Coach'),
+        ReplyRecipient.parent => t('其他家长', 'Another parent'),
+      };
+  String toneName(ReplyTone x) => switch (x) {
+        ReplyTone.polite => t('礼貌', 'Polite'),
+        ReplyTone.firm => t('坚定', 'Firm'),
+        ReplyTone.apology => t('道歉', 'Apologetic'),
+        ReplyTone.followUp => t('催办', 'Follow-up'),
+        ReplyTone.thanks => t('感谢', 'Thank-you'),
+      };
+  String formatName(ReplyFormat f) => f == ReplyFormat.email ? t('邮件', 'Email') : t('短信', 'Text message');
+  String get replyRestrained => t('克制模式', 'Light-touch mode');
+  String get replyRestrainedDesc => t('我自己写英文,只纠错,不重写', 'I write the English myself — fix mistakes only, no rewriting');
+  String get replyPoints => t('用中文写要点', 'Your points (Chinese is fine)');
+  String get replyPointsHint => t('例如:小雨下周三上午要看牙医,10 点接走,11 点半送回学校。问一下要不要先去办公室签字。', 'e.g. Mia has a dentist appointment next Wednesday; I’ll pick her up at 10 and bring her back by 11:30. Do I need to sign her out at the office?');
+  String get replyDraft => t('你写的英文', 'Your English draft');
+  String get replyDraftHint => t('例如:Hi Ms. Garcia, Mia will absent tomorrow because she have a fever.', 'e.g. Hi Ms. Garcia, Mia will absent tomorrow because she have a fever.');
+  String get replySignature => t('署名(可选)', 'Sign-off name (optional)');
+  String get replySignatureHint => t('例如 Lin Wang (Mia’s mom)', 'e.g. Lin Wang (Mia’s mom)');
+  String get replySignatureNote => t('只在本机填进 [Your name],不发给 AI', 'Filled into [Your name] on this device — never sent to the AI');
+  String get replyGenerate => t('生成英文', 'Write it in English');
+  String get replyFix => t('只纠错', 'Fix mistakes only');
+  String get replyRunning => t('正在请 Claude 写…', 'Asking Claude…');
+  String get replyFailed => t('生成失败', 'Couldn’t write it');
+  String get replyEmpty => t('先写几句要点', 'Write a few points first');
+  String get replySubject => t('主题', 'Subject');
+  String get replyBack => t('中文回译 · 核对意思有没有被改', 'Chinese back-translation · check nothing changed');
+  String get replyChanges => t('改了哪些地方', 'What was corrected');
+  String get replyNoChanges => t('没发现要改的地方', 'No mistakes found');
+  String get replyNotes => t('发送前留意', 'Before you send');
+  String replyFillIn(String list) => t('发送前把方括号换成真实信息:$list', 'Replace the bracketed parts before sending: $list');
+  String get copy => t('复制', 'Copy');
+  String get copySubject => t('复制主题', 'Copy subject');
+  String get share => t('分享', 'Share');
+  String get replyHistory => t('回信记录', 'Reply history');
+  String get replyHistoryEmpty => t('还没有写过英文回信', 'No replies yet');
+  String get replyNoKeyTitle => t('需要 Claude API key', 'Needs a Claude API key');
+  String get replyNoKeyBody => t('这个功能用你自己的 key 调 Claude(每封约 \$0.01–0.03)。在设置里填一个就能用。', 'This uses Claude with your own key (about \$0.01–0.03 per message). Add one in Settings.');
+  String get goSettings => t('去设置', 'Settings');
+  String get replyConsentTitle => t('把要点发给 Claude?', 'Send your points to Claude?');
+  String get replyConsentBody => t(
+      '会发送你写的要点(克制模式下是你写的英文)和选的对象、语气;从通知进入时,还会带上这条通知的文字。用你自己的 API key 直接发给 Anthropic(api.anthropic.com),不经过任何其他服务器。\n\n署名只在本机填入,不会发送;孩子资料、成绩、其他通知也不会发送。要点里写了谁的名字,这个名字会被发送。',
+      'What you wrote (your English draft in light-touch mode) and the recipient and tone you picked are sent — plus the notice’s text when you reply to one — directly to Anthropic (api.anthropic.com) with your own API key, with no other server in between.\n\nYour sign-off name is filled in on this device and never sent, nor are children’s profiles, grades or other notices. Any name you type into your points is sent.');
+  String get replyConsentOk => t('发送并生成', 'Send & write');
+
   // 学习 / 导出
   String get teacherNote => t('老师反馈', 'Teacher feedback');
   String get teacherNoteHint => t('联系册、App 或口头反馈,抄一句', 'From the planner, app or in person');

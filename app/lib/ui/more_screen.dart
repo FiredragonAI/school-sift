@@ -1,4 +1,4 @@
-// 更多:孩子、家庭成员、语言、备份、演示数据、关于。
+// 更多:设置、用英文写信、孩子、家庭成员、语言、备份、演示数据、关于。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +8,7 @@ import '../l10n/strings.dart';
 import '../platform/export.dart';
 import '../store/app_state.dart';
 import '../store/settings.dart';
+import 'reply_screen.dart';
 import 'settings_screen.dart';
 import 'widgets.dart';
 
@@ -29,6 +30,16 @@ class MoreScreen extends StatelessWidget {
             subtitle: Text('${s.aiSection} · ${s.ocrSection} · ${s.remindersSection}', maxLines: 1, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.translate),
+            title: Text(s.replyWrite),
+            subtitle: Text(s.replyWriteDesc, maxLines: 2, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openReplyComposer(context),
           ),
         ),
         SectionTitle(s.children, trailing: IconButton(icon: const Icon(Icons.add), onPressed: () => showChildEditor(context))),

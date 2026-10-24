@@ -12,7 +12,7 @@
 </head>
 <body>
 <h1>学校通 · SchoolSift 隐私政策</h1>
-<p>生效日期:2026-10-01</p>
+<p>生效日期:2026-10-01;最近更新:2026-10-23(加入「用英文回复」)</p>
 
 <h2>一句话</h2>
 <p>学校通是一款<strong>本机优先</strong>的家长工具。你输入的孩子信息、学校通知、日程、待办、照片、成绩和学习记录,<strong>只保存在你自己的设备上</strong>(Android 应用的私有存储,或浏览器的本地存储),我们没有服务器接收这些数据,也不会上传、出售或与第三方共享。</p>
@@ -32,8 +32,13 @@
 <h2>图片文字识别(OCR)</h2>
 <p>默认在你的设备上完成:网页版用 Tesseract.js 在浏览器里识别(首次使用会从公共 CDN 下载语言包),Android 版用 Google ML Kit 端侧模型。图片不会上传。</p>
 
-<h2>可选的 AI 识别(你自己的 Claude API key)</h2>
-<p>你可以在「更多 → 设置」填入自己的 Anthropic API key。<strong>只有你主动点「用 AI 识别」时</strong>,应用才会把<strong>这一条通知</strong>的文字和附图(或 PDF)用你的 key 直接发送到 Anthropic 的 API(api.anthropic.com),不经过我们或任何第三方服务器。孩子姓名、成绩、学习记录、其他通知都不会发送。第一次使用会弹窗说明并征得你的同意;你随时可以改用离线识别。API key 只保存在本机,不包含在备份导出里。Anthropic 对 API 数据的处理适用其 <a href="https://www.anthropic.com/legal/privacy">隐私政策</a>与商业条款。</p>
+<h2>可选的 AI 功能(你自己的 Claude API key)</h2>
+<p>你可以在「更多 → 设置」填入自己的 Anthropic API key。AI <strong>只在你主动点按钮时</strong>才会调用,内容用你的 key 直接发送到 Anthropic 的 API(api.anthropic.com),不经过我们或任何第三方服务器:</p>
+<ul>
+<li><strong>用 AI 识别</strong>:发送<strong>这一条通知</strong>的文字和附图(或 PDF)。孩子姓名、成绩、学习记录、其他通知都不会发送。</li>
+<li><strong>用英文回复 / 用英文写信</strong>:发送你写的要点(克制模式下是你自己写的英文)和你选的收件对象、语气;从某条通知进入时,还会带上这条通知的文字。你写进要点里的内容(包括名字)会被发送;署名只在本机填入,不会发送;孩子资料、成绩、其他通知都不会发送。生成的回信只保存在本机(也会包含在你自己导出的备份里)。</li>
+</ul>
+<p>两种用途各自在第一次使用时弹窗说明并征得你的同意;你随时可以改用离线识别,或不用 AI 回信。API key 只保存在本机,不包含在备份导出里。Anthropic 对 API 数据的处理适用其 <a href="https://www.anthropic.com/legal/privacy">隐私政策</a>与商业条款。</p>
 
 <h2>提醒</h2>
 <p>Android 版的提醒是本地定时通知,由系统在设备上触发,不涉及任何服务器。网页版只在页面打开时用浏览器通知。</p>
@@ -43,7 +48,7 @@
 
 <div class="en">
 <h2>Privacy Policy (English)</h2>
-<p><strong>SchoolSift is local-first.</strong> Everything you enter — children, school notices, events, tasks, photos, grades and study logs — stays on your own device (the Android app's private storage or your browser's local storage). There is no account, no server, no analytics or advertising SDK, and nothing is uploaded, sold or shared. Photos are downscaled and stored locally only. Exports (.ics, Google Calendar link, JSON backup) are triggered by you and handed to the destination you choose. Deleting the app, or using "More → Clear all data", removes everything. OCR runs on-device (Tesseract.js in the browser, Google ML Kit on Android). <strong>Optional AI extraction</strong> uses <em>your own</em> Anthropic API key: only when you tap "Extract with AI" is that single notice's text and images sent directly to api.anthropic.com — never children's names, grades or other notices, and never through our servers. You are asked for consent the first time, and the key is stored only on your device.</p>
+<p><strong>SchoolSift is local-first.</strong> Everything you enter — children, school notices, events, tasks, photos, grades and study logs — stays on your own device (the Android app's private storage or your browser's local storage). There is no account, no server, no analytics or advertising SDK, and nothing is uploaded, sold or shared. Photos are downscaled and stored locally only. Exports (.ics, Google Calendar link, JSON backup) are triggered by you and handed to the destination you choose. Deleting the app, or using "More → Clear all data", removes everything. OCR runs on-device (Tesseract.js in the browser, Google ML Kit on Android). <strong>Optional AI features</strong> use <em>your own</em> Anthropic API key and run only when you tap a button, sending directly to api.anthropic.com, never through our servers. "Extract with AI" sends that single notice's text and images — never children's names, grades or other notices. "Reply in English" sends the points you wrote (or your own English draft in light-touch mode), the recipient and tone you picked, and, when you reply to a notice, that notice's text; anything you type into your points, including names, is sent, while your sign-off name is filled in on the device and never sent. Generated replies are kept only on your device (and in backups you export). You are asked for consent the first time you use each feature, and the key is stored only on your device. (Last updated 2026-10-23: added "Reply in English".)</p>
 </div>
 </body>
 </html>
