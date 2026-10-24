@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/models.dart';
+import 'money.dart';
 import 'notice_parser.dart';
 
 class ClaudeAttachment {
@@ -53,7 +54,7 @@ class ClaudeExtractor {
         'items': {
           'type': 'object',
           'additionalProperties': false,
-          'required': ['type', 'title', 'date', 'start', 'end', 'location', 'amount', 'confidence', 'evidence'],
+          'required': ['type', 'title', 'date', 'start', 'end', 'location', 'amount', 'currency', 'confidence', 'evidence'],
           'properties': {
             'type': {
               'type': 'string',
@@ -85,6 +86,12 @@ class ClaudeExtractor {
                 {'type': 'null'},
               ],
             },
+            'currency': {
+              'anyOf': [
+                {'type': 'string', 'enum': currencies},
+                {'type': 'null'},
+              ],
+            },
             'confidence': {'type': 'number'},
             'evidence': {'type': 'string'},
           },
@@ -107,7 +114,7 @@ Produce:
 - items: one entry per actionable thing.
   - type "event": something that happens on a date (field trip, conference, picture day, test, no-school day, early dismissal, performance...). Include start/end if stated, location if stated.
   - type "sign": a form/permission slip/consent the parent must sign and return; date = the return deadline.
-  - type "pay": money to pay; amount = number without currency; date = deadline.
+  - type "pay": money to pay; amount = number without currency; currency = "USD" for \$, dollars, USD, 美元, 美金 and "CNY" for ¥, ￥, RMB, 人民币, or null if the notice doesn't say which (a bare 元 or 块 doesn't say); date = deadline.
   - type "bring": something the child must bring or wear; date = the day it is needed.
   - type "deadline": any other deadline (RSVP, register, submit, order).
   Do not duplicate the same obligation under two types. Skip generic pleasantries. If a sentence contains both an event and a deadline, emit both.
@@ -210,6 +217,7 @@ If an image is a photo of a paper notice, read it carefully including handwritin
         end: _tod(it['end']),
         location: (it['location'] ?? '').toString(),
         amount: (it['amount'] as num?)?.toDouble(),
+        currency: _currency(it['currency']),
         confidence: ((it['confidence'] as num?)?.toDouble() ?? 0.7).clamp(0.0, 1.0),
         evidence: (it['evidence'] ?? '').toString(),
       ));
@@ -231,6 +239,12 @@ If an image is a photo of a paper notice, read it carefully including handwritin
     final t = DateTime(y, mo, d);
     if (t.month != mo) return null;
     return Day.of(t);
+  }
+
+  /// 只收认识的代码;别的(或没写)留空,按美元显示
+  static String? _currency(dynamic v) {
+    final c = v is String ? v.trim().toUpperCase() : null;
+    return currencies.contains(c) ? c : null;
   }
 
   static TimeOfDay? _tod(dynamic v) {

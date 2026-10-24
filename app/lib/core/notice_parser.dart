@@ -19,6 +19,7 @@ class ExtractedItem {
   TimeOfDay? end;
   String location;
   double? amount;
+  String? currency; // USD / CNY;null = 通知没写明(按美元显示,见 core/money.dart)
   double confidence; // 0..1
   String evidence; // 来源句子
   bool keep = true;
@@ -30,6 +31,7 @@ class ExtractedItem {
     this.end,
     this.location = '',
     this.amount,
+    this.currency,
     required this.confidence,
     required this.evidence,
   });
@@ -56,7 +58,8 @@ class NoticeParser {
       r'签字|签名|签收|回执|家长签|确认单|同意书|知情书|sign(ed)? and return|signature|permission (slip|form)|consent form|waiver|return the (slip|form)|acknowledg',
       caseSensitive: false);
   static final _payRe = RegExp(
-      r'缴费|交费|费用|收费|交钱|付款|转账|报名费|餐费|书本费|校服费|班费|\bpay(ment)?\b|\bfee\b|\bcost\b|donation|fundrais|order form|\$\s?\d|¥|￥|\d+(\.\d+)?\s*元',
+      r'缴费|交费|费用|收费|交钱|付款|转账|报名费|餐费|书本费|校服费|班费|\bpay(ment)?\b|\bfee\b|\bcost\b|donation|fundrais|order form|\$\s?\d|¥|￥|\d+(\.\d+)?\s*元'
+      r'|\d\s*(美元|美金|人民币|dollars?\b|usd\b|rmb\b)|(人民币|\busd|\brmb)\s*\d',
       caseSensitive: false);
   static final _payStrongRe = RegExp(
       r'缴费|交费|交钱|付款|报名费|餐费|校服费|班费|\bpayment\b|\bfee\b|donation|\$\s?\d|¥|￥|\d+(\.\d+)?\s*元',
@@ -103,9 +106,9 @@ class NoticeParser {
       final dates = _findDates(s);
       final times = _findTimes(s);
       final loc = _findLocation(s);
-      final amount = _findAmount(s);
+      final money = _findAmount(s);
       final hasSign = _signRe.hasMatch(s);
-      final hasPay = (_payRe.hasMatch(s) && amount != null) || _payStrongRe.hasMatch(s);
+      final hasPay = (_payRe.hasMatch(s) && money != null) || _payStrongRe.hasMatch(s);
       final hasBring = _bringRe.hasMatch(s);
       final hasDeadline = _deadlineRe.hasMatch(s);
       docSign |= hasSign;
@@ -131,7 +134,8 @@ class NoticeParser {
           type: type,
           title: _actionTitle(type, s, titleHint, en),
           day: last.day,
-          amount: hasPay ? amount : null,
+          amount: hasPay ? money?.amount : null,
+          currency: hasPay ? money?.currency : null,
           confidence: _conf(last.confidence, s, action: true),
           evidence: s,
         ));
@@ -171,7 +175,8 @@ class NoticeParser {
     }
     if (docPay && items.every((e) => e.type != ItemType.pay)) {
       final ev = _sentenceWith(sentences, _payRe);
-      items.add(ExtractedItem(type: ItemType.pay, title: _actionTitle(ItemType.pay, ev, titleHint, en), day: fallbackDue, amount: _findAmount(clean), confidence: 0.55, evidence: ev));
+      final money = _findAmount(clean);
+      items.add(ExtractedItem(type: ItemType.pay, title: _actionTitle(ItemType.pay, ev, titleHint, en), day: fallbackDue, amount: money?.amount, currency: money?.currency, confidence: 0.55, evidence: ev));
     }
     if (docBring && items.every((e) => e.type != ItemType.bring)) {
       final ev = _sentenceWith(sentences, _bringRe);
@@ -390,10 +395,23 @@ class NoticeParser {
     return '';
   }
 
-  double? _findAmount(String s) {
-    final m = RegExp(r'(?:[¥￥\$]\s*(\d+(?:\.\d{1,2})?))|(?:(\d+(?:\.\d{1,2})?)\s*(?:元|块|dollars?|rmb|usd))', caseSensitive: false).firstMatch(s);
+  // 符号或代码在前($12、¥300、RMB 50、人民币50元),或单位在后(300元、20 dollars、120美元、200元人民币);
+  // 千分位逗号也认($1,250)
+  static final _amountRe = RegExp(
+      r'(\$|¥|￥|(?<![a-z])(?:usd|rmb|cny)(?![a-z])|人民币)\s*(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)'
+      r'|(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)\s*(美元|美金|dollars?(?![a-z])|(?:usd|rmb|cny)(?![a-z])|元\s*[(（]?\s*(?:人民币|rmb)|人民币|元|块)',
+      caseSensitive: false);
+
+  ({double amount, String? currency})? _findAmount(String s) {
+    final m = _amountRe.firstMatch(s);
     if (m == null) return null;
-    return double.tryParse(m[1] ?? m[2] ?? '');
+    final amount = double.tryParse((m[2] ?? m[3]!).replaceAll(',', ''));
+    if (amount == null) return null;
+    final unit = (m[1] ?? m[4]!).toLowerCase();
+    final cny = RegExp(r'[¥￥]|rmb|cny|人民币').hasMatch(unit);
+    final usd = RegExp(r'[$美]|usd|dollar').hasMatch(unit);
+    // 只写「元」「块」的不知道是哪国的钱,留空(按美元显示)
+    return (amount: amount, currency: cny ? 'CNY' : (usd ? 'USD' : null));
   }
 
   // ---------- 标题 ----------

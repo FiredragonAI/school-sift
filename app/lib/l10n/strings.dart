@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/money.dart';
 import '../models/models.dart';
 import '../store/app_state.dart';
 
@@ -43,6 +44,12 @@ class S {
   String get location => t('地点', 'Location');
   String get note => t('备注', 'Note');
   String get amount => t('金额', 'Amount');
+  String get currencySwitch => t('切换货币', 'Switch currency');
+  String currencyName(String? c) => switch (c ?? defaultCurrency) {
+        'USD' => t('美元', 'US dollars'),
+        'CNY' => t('人民币', 'Chinese yuan'),
+        final code => code,
+      };
   String get dueDate => t('截止', 'Due');
   String get noDue => t('无截止', 'No due date');
   String get overdue => t('已逾期', 'Overdue');

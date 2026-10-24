@@ -91,7 +91,7 @@ void main() {
       await go(tester, find.textContaining(zh ? '待办 (' : 'Tasks ('));
       final pay = find.ancestor(of: find.text(zh ? '缴费:课后服务费' : 'Pay: after-school program fee'), matching: find.byType(TaskTile));
       expect(find.descendant(of: pay, matching: find.byIcon(Icons.person_outline)), findsOneWidget);
-      expect(textOf(tester, pay), contains('¥300 · ￼ ${zh ? '爸爸' : 'Dad'}'));
+      expect(textOf(tester, pay), contains('\$300 · ￼ ${zh ? '爸爸' : 'Dad'}'));
       // 逾期那行整行标红,图标也跟着红
       final late = find.ancestor(of: find.text(zh ? '签字:校服订购单' : 'Sign: spirit wear order form'), matching: find.byType(TaskTile));
       final lateIcon = find.descendant(of: late, matching: find.byIcon(Icons.person_outline));

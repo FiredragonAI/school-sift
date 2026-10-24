@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/ics.dart';
+import '../core/money.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../platform/export.dart';
@@ -236,7 +237,7 @@ class TaskTile extends StatelessWidget {
     final subStyle = TextStyle(color: t.overdue ? const Color(0xFFE6563F) : null);
     final sub = [
       TextSpan(text: dueText),
-      if (t.amount != null) TextSpan(text: ' · ¥${t.amount!.toStringAsFixed(t.amount! % 1 == 0 ? 0 : 2)}'),
+      if (t.amount != null) TextSpan(text: ' · ${formatAmount(t.amount!, t.currency)}'),
       if (who != null) ...[const TextSpan(text: ' · '), iconSpan(Icons.person_outline, style: subStyle), TextSpan(text: ' $who')],
       if (!t.isOpen) TextSpan(text: ' · ${s.status(t.status)}'),
     ];
@@ -385,7 +386,7 @@ String taskShareText(S s, AppState st, Task t) {
     if (c != null) '[$c]',
     t.title,
     if (t.due != null) '· ${s.t('${s.md(t.due!)}前', 'by ${s.md(t.due!)}')}',
-    if (t.amount != null) '· ¥${t.amount!.toStringAsFixed(t.amount! % 1 == 0 ? 0 : 2)}',
+    if (t.amount != null) '· ${formatAmount(t.amount!, t.currency)}',
     if (who != null) '· 👤 $who',
   ].join(' ');
 }
@@ -394,7 +395,8 @@ Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, U
   final s = S.read(context);
   final st = context.read<AppState>();
   final title = TextEditingController(text: task?.title ?? '');
-  final amount = TextEditingController(text: task?.amount == null ? '' : task!.amount!.toStringAsFixed(task.amount! % 1 == 0 ? 0 : 2));
+  final amount = TextEditingController(text: task?.amount == null ? '' : amountInput(task!.amount!));
+  var currency = task?.currency;
   var childId = task?.childId ?? (st.filterChildId.isNotEmpty ? st.filterChildId : (st.children.isNotEmpty ? st.children.first.id : ''));
   var k = task?.kind ?? kind ?? TaskKind.sign;
   Day? due = task?.due ?? Day.today().add(2);
@@ -422,7 +424,7 @@ Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, U
           Expanded(child: DayField(label: s.dueDate, value: due, clearable: true, onChanged: (v) => setS(() => due = v))),
           if (k == TaskKind.pay) ...[
             const SizedBox(width: 8),
-            SizedBox(width: 110, child: TextField(controller: amount, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: s.amount))),
+            SizedBox(width: 130, child: AmountField(controller: amount, currency: currency, onCurrency: (v) => setS(() => currency = v))),
           ],
         ]),
         const SizedBox(height: 12),
@@ -460,7 +462,8 @@ Future<void> showTaskEditor(BuildContext context, {Task? task, TaskKind? kind, U
               kind: k,
               title: title.text.trim(),
               due: due,
-              amount: double.tryParse(amount.text),
+              amount: parseAmount(amount.text),
+              currency: currency,
               assigneeId: who,
               noticeId: task?.noticeId ?? '',
               imageId: img == null ? null : (img == originalImg ? task!.imageId : st.putImage(img!)),

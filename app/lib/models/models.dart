@@ -243,6 +243,7 @@ class Task {
   final String title;
   final Day? due;
   final double? amount;
+  final String? currency; // 金额的货币 USD / CNY;null = 没记,按美元显示(core/money.dart)
   final String assigneeId;
   final String noticeId;
   final String? imageId; // 纸质单据照片(图片库 id)
@@ -255,6 +256,7 @@ class Task {
     required this.title,
     this.due,
     this.amount,
+    this.currency,
     this.assigneeId = '',
     this.noticeId = '',
     this.imageId,
@@ -268,6 +270,7 @@ class Task {
     Day? due,
     bool clearDue = false,
     double? amount,
+    String? currency,
     String? assigneeId,
     TaskStatus? status,
     String? imageId,
@@ -279,6 +282,7 @@ class Task {
         title: title ?? this.title,
         due: clearDue ? null : (due ?? this.due),
         amount: amount ?? this.amount,
+        currency: currency ?? this.currency,
         assigneeId: assigneeId ?? this.assigneeId,
         noticeId: noticeId,
         imageId: imageId ?? this.imageId,
@@ -295,6 +299,7 @@ class Task {
         'title': title,
         'due': due?.key,
         'amount': amount,
+        'currency': currency,
         'assigneeId': assigneeId,
         'noticeId': noticeId,
         'imageId': imageId,
@@ -308,6 +313,7 @@ class Task {
         title: j['title'] ?? '',
         due: j['due'] == null ? null : Day.parse(j['due']),
         amount: (j['amount'] as num?)?.toDouble(),
+        currency: j['currency'], // 0.2 及以前的数据没有这个键
         assigneeId: j['assigneeId'] ?? '',
         noticeId: j['noticeId'] ?? '',
         imageId: j['imageId'],
