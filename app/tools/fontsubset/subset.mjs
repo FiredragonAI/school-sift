@@ -19,9 +19,20 @@
 //
 // 西文标点改比例宽度:SC 版把 · • ‘ ’ “ ” 默认映射成全角字形(中文排版习惯),原样打包的话英文
 //   文案和英文通知里 "Don’t" 会显示成 "Don’ t"、" · " 两边空一大块。字库里有这几个字符的比例宽度
-//   字形(日文 / 韩文的 locl 用的就是它们,子集的版式闭包已经把它们留下了),裁完把 cmap 里这几个
-//   码位改指向它们(cmap.mjs),样子和以前缺字时回退到 Roboto 等西文字体一致。— … 不用动:
-//   西文里本来就是比例宽度,夹在汉字中间时字库自己换成全角。
+//   字形(日文 / 韩文的 locl 用的就是它们,第一遍裁出的子集里还有),把 cmap 里这几个码位改指向
+//   它们(cmap.mjs),样子和以前缺字时回退到 Roboto 等西文字体一致。— … 不用动:
+//   英文语境的西文里本来就是比例宽度,中文语境里字库自己换成全角。
+//
+// 分两遍裁,只留简体用得到的版式:字库的 GSUB 给每个文种都配了日 / 韩 / 繁 / 港的语言系统,它们的
+//   locl 把几乎每个汉字换成当地写法;harfbuzz 裁字时把所有语言系统的替换目标都算进版式闭包,只裁一遍
+//   的话子集里 13,320 个字形有 6,100 多个是这种用不到的异体,字体大了将近一倍。所以:
+//   第一遍照常裁(全部 feature、全部语言系统),用日文 locl 找出上面的比例宽度字形,改 cmap 指过去;
+//   第二遍在第一遍的结果上只留默认和 ZHS 两个语言系统(langsys.mjs,这个字库的默认就是简体)、
+//   只留 HarfBuzz 横排默认会开的 feature(FEATURES),再裁一遍。比例字形这时由 cmap 直接引用,
+//   不再靠日文 locl;西文里的 … 和数字(latn 默认语言系统的 locl)、中文语境的 — 和 "'(ZHS 的
+//   locl)、—— 连写、字距都还在,check.mjs 会核对。竖排的 vert / vrt2 与 vhea / vmtx / VORG
+//   一并不要(Flutter 不支持竖排)。App 里要是用了别的 OpenType feature(FontFeature,如 palt),
+//   要加进 FEATURES 重裁。
 //
 // 用法:node subset.mjs <全字库所在目录>
 //   目录里要有 NotoSansCJKsc-Regular.otf 与 NotoSansCJKsc-Bold.otf(Google 官方 2.004,SIL OFL;
@@ -38,7 +49,16 @@ import { fileURLToPath } from 'node:url';
 import subsetFont from 'subset-font';
 import hbPromise from 'harfbuzzjs';
 import { remapCmap } from './cmap.mjs';
+import { keepLangSys } from './langsys.mjs';
 import { PROPORTIONAL, checkFonts, hex, shapeLatin } from './check.mjs';
+
+// 第二遍保留的语言系统(默认语言系统总会保留)。文本语言是日 / 韩 / 繁 / 港时引擎回落到默认,也就是简体字形。
+const KEEP_LANGSYS = ['ZHS '];
+// 第二遍保留的 feature:HarfBuzz 横排默认会开的那些(Flutter 在 Web 和 Android 上都用 HarfBuzz 排版,
+// App 没设 fontFeatures)。字库里另有 aalt dlig fwid hist hwid pwid ruby halt palt 和竖排的 vert vrt2
+// vhal vkrn vpal,不开就用不上,不留。
+const FEATURES = ['rvrn', 'ccmp', 'locl', 'rlig', 'calt', 'clig', 'liga', 'rclt', 'kern', 'mark', 'mkmk', 'curs', 'dist',
+  'ltra', 'ltrm', 'ljmo', 'vjmo', 'tjmo'];
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appRoot = resolve(here, '..', '..');
@@ -91,7 +111,7 @@ const text = [...chars].join('');
 console.log(`字符集:源码 ${fromSrc} + GB2312 ${fromGb} + 标点/全角 ${fromPunct} + ASCII 95 = ${chars.size}`);
 
 // ---- 西文标点:找出子集里的比例宽度字形 ----
-// 日文 locl 下 · • ‘ ’ “ ” 排出来就是比例宽度字形,拿它们在子集里的字形号。
+// 日文 locl 下 · • ‘ ’ “ ” 排出来就是比例宽度字形,拿它们在(第一遍)子集里的字形号。
 const hb = await hbPromise;
 function proportionalRemap(font) {
   const blob = hb.createBlob(font);
@@ -130,12 +150,19 @@ for (const weight of ['Regular', 'Bold']) {
   const inName = `NotoSansCJKsc-${weight}.otf`;
   const outName = `NotoSansSC-${weight}.otf`;
   const full = readFileSync(join(srcDir, inName));
+  // 第一遍:全部 feature、全部语言系统(subset-font 的默认),日文 locl 还在,用来找比例宽度字形。
   // sfnt = 保持原容器(CFF OTF),Flutter 直接能读
-  const sub = await subsetFont(full, text, { targetFormat: 'sfnt' });
-  const { remap, notes } = proportionalRemap(sub);
-  const out = remapCmap(sub, remap);
+  const first = await subsetFont(full, text, { targetFormat: 'sfnt' });
+  const { remap, notes } = proportionalRemap(first);
+  // 第二遍:cmap 先指向比例字形,再删掉非简体的语言系统、只留横排默认 feature,裁掉用不到的异体
+  const out = await subsetFont(keepLangSys(remapCmap(first, remap), KEEP_LANGSYS), text, {
+    targetFormat: 'sfnt',
+    keepFeatures: FEATURES,
+    dropTables: ['vhea', 'vmtx', 'VORG'],
+  });
   writeFileSync(join(outDir, outName), out);
-  console.log(`${inName} → ${outName}: ${(full.length / 1048576).toFixed(1)} MB → ${(out.length / 1048576).toFixed(2)} MB;比例宽度标点 ${notes.join(' ') || '无'}`);
+  const mb = (b) => `${(b.length / 1048576).toFixed(2)} MB`;
+  console.log(`${inName} → ${outName}: ${mb(full)} → 第一遍 ${mb(first)} → ${mb(out)};比例宽度标点 ${notes.join(' ') || '无'}`);
 }
 
 // ---- 核对 ----

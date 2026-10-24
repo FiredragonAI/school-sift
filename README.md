@@ -66,7 +66,7 @@ flutter build apk --release --split-per-abi   # 需要 android/key.properties,�
 ```
 
 - 存储:Hive CE(`store/app_state.dart`),图片单独一个 box;0.1 版 localStorage 数据首次启动自动迁移。
-- 字体:Web 端没有系统字体,`assets/fonts/` 里是 Noto Sans SC 的子集(SIL OFL),由 `tools/fontsubset/subset.mjs` 生成(subset-font 必须锁 2.7.0)。界面文案新用了符号或生僻字要重新裁剪,`test/font_coverage_test.dart` 会拦住漏掉的字符(harfbuzz 版:`node tools/fontsubset/check.mjs`)。
+- 字体:Web 端没有系统字体,`assets/fonts/` 里是 Noto Sans SC 的子集(SIL OFL),由 `tools/fontsubset/subset.mjs` 生成(subset-font 必须锁 2.7.0),只留简体用到的字形和横排默认版式,每个字重约 1.7 MB;App 要用别的 OpenType feature(FontFeature)得加进脚本里的 `FEATURES` 重裁。界面文案新用了符号或生僻字要重新裁剪,`test/font_coverage_test.dart` 会拦住漏掉的字符(harfbuzz 版:`node tools/fontsubset/check.mjs`)。
 - 图标:`GEN_ICON=1 flutter test test/tools/gen_icon_test.dart` 重新生成 Android / Web 全部尺寸。
 - OCR:Web 端按需从 jsdelivr 加载 Tesseract.js(首次下载语言包);Android 端 ML Kit 拉丁 + 中文模型打进 APK。
 - 提醒:Android 用 `flutter_local_notifications` 不精确闹钟(不需要 SCHEDULE_EXACT_ALARM);每次数据变动 3 秒后整体重排。

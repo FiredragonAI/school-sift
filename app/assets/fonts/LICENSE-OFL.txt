@@ -1,5 +1,7 @@
 Noto Sans CJK SC (NotoSansSC-Regular.otf / NotoSansSC-Bold.otf are subsets made with tools/fontsubset/;
-the cmap entries for U+00B7, U+2022 and the curly quotes point to the font's own proportional glyphs)
+the cmap entries for U+00B7, U+2022 and the curly quotes point to the font's own proportional glyphs;
+only the default and ZHS language systems and the default horizontal layout features are kept,
+and the vertical metrics tables are removed)
 © 2014-2021 Adobe (http://www.adobe.com/).
 
 This Font Software is licensed under the SIL Open Font License,
