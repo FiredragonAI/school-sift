@@ -497,19 +497,18 @@ class _NoticeDetailPageState extends State<NoticeDetailPage> {
         ],
       ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-        Row(children: [
-          ChildTag(n.childId),
-          const SizedBox(width: 8),
-          Chip(
-            visualDensity: VisualDensity.compact,
-            label: Text(n.processed ? s.processed : s.pending),
-            backgroundColor: n.processed ? null : Theme.of(context).colorScheme.primaryContainer,
-          ),
-          if (n.extractor.isNotEmpty) ...[
-            const SizedBox(width: 6),
-            Chip(visualDensity: VisualDensity.compact, avatar: Icon(n.extractor == 'ai' ? Icons.auto_awesome : Icons.rule, size: 16), label: Text(n.extractor == 'ai' ? s.extractorAi : s.extractorRules)),
-          ],
-          const Spacer(),
+        // 一行放得下就和原来一样:标签靠左、来源靠右;放不下时来源换到下一行,标签也放不下就各占一行
+        OverflowBar(alignment: MainAxisAlignment.spaceBetween, spacing: 8, overflowSpacing: 4, children: [
+          OverflowBar(spacing: 6, overflowSpacing: 4, children: [
+            Padding(padding: const EdgeInsetsDirectional.only(end: 2), child: ChildTag(n.childId)), // 孩子后面空 8,两个标签之间空 6
+            Chip(
+              visualDensity: VisualDensity.compact,
+              label: Text(n.processed ? s.processed : s.pending),
+              backgroundColor: n.processed ? null : Theme.of(context).colorScheme.primaryContainer,
+            ),
+            if (n.extractor.isNotEmpty)
+              Chip(visualDensity: VisualDensity.compact, avatar: Icon(n.extractor == 'ai' ? Icons.auto_awesome : Icons.rule, size: 16), label: Text(n.extractor == 'ai' ? s.extractorAi : s.extractorRules)),
+          ]),
           Text(
             '${s.source}: ${switch (n.source) { 'photo' => s.sourcePhoto, 'file' => s.sourceFile, 'demo' => s.sourceDemo, _ => s.sourcePaste }}',
             style: Theme.of(context).textTheme.bodySmall,
