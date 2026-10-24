@@ -185,6 +185,7 @@ class EventRow extends StatelessWidget {
     final s = S.of(context);
     final st = context.read<AppState>();
     final who = st.member(e.assigneeId)?.name;
+    final small = Theme.of(context).textTheme.bodySmall;
     return InkWell(
       onTap: () => showEventEditor(context, event: e),
       borderRadius: BorderRadius.circular(8),
@@ -204,7 +205,15 @@ class EventRow extends StatelessWidget {
                 ],
               ]),
               if (e.location.isNotEmpty || who != null)
-                Text([if (e.location.isNotEmpty) e.location, if (who != null) '👤 $who'].join(' · '), style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis),
+                Text.rich(
+                  TextSpan(children: [
+                    if (e.location.isNotEmpty) TextSpan(text: e.location),
+                    if (e.location.isNotEmpty && who != null) const TextSpan(text: ' · '),
+                    if (who != null) ...[iconSpan(Icons.person_outline, style: small), TextSpan(text: ' $who')],
+                  ]),
+                  style: small,
+                  overflow: TextOverflow.ellipsis,
+                ),
             ]),
           ),
         ]),
@@ -224,17 +233,18 @@ class TaskTile extends StatelessWidget {
     final st = context.read<AppState>();
     final who = st.member(t.assigneeId)?.name;
     final dueText = t.due == null ? s.noDue : s.dueIn(t.due!);
+    final subStyle = TextStyle(color: t.overdue ? const Color(0xFFE6563F) : null);
     final sub = [
-      dueText,
-      if (t.amount != null) '¥${t.amount!.toStringAsFixed(t.amount! % 1 == 0 ? 0 : 2)}',
-      if (who != null) '👤 $who',
-      if (!t.isOpen) s.status(t.status),
-    ].join(' · ');
+      TextSpan(text: dueText),
+      if (t.amount != null) TextSpan(text: ' · ¥${t.amount!.toStringAsFixed(t.amount! % 1 == 0 ? 0 : 2)}'),
+      if (who != null) ...[const TextSpan(text: ' · '), iconSpan(Icons.person_outline, style: subStyle), TextSpan(text: ' $who')],
+      if (!t.isOpen) TextSpan(text: ' · ${s.status(t.status)}'),
+    ];
     return ListTile(
       dense: compact,
       leading: Icon(kindIcon(t.kind), color: kindColor(t.kind)),
       title: Text(t.title, style: TextStyle(decoration: t.isOpen ? null : TextDecoration.lineThrough, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(sub, style: TextStyle(color: t.overdue ? const Color(0xFFE6563F) : null), maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text.rich(TextSpan(children: sub), style: subStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         if (t.imageId != null) GestureDetector(onTap: () => showStoredImage(context, t.imageId!), child: SizedBox(width: 32, height: 32, child: storedImage(context, t.imageId!))),
         if (!compact) ...[const SizedBox(width: 6), ChildTag(t.childId)],
