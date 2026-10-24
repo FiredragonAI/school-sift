@@ -1,4 +1,4 @@
-// 复用的小部件:Logo、孩子筛选条、孩子头像点、空状态、图片工具、通用编辑对话框。
+// 复用的小部件:Logo、孩子筛选条、孩子头像点、空状态、行内小图标、图片工具、通用编辑对话框。
 
 import 'dart:convert';
 
@@ -130,6 +130,24 @@ class SectionTitle extends StatelessWidget {
         if (trailing != null) trailing!,
       ]),
     );
+  }
+}
+
+/// 文字中间的小图标,代替 emoji(负责人、老师反馈前面那种)。打包的字体里没有 emoji,
+/// Web 版 CanvasKit 会去 fonts.gstatic.com 下载回退字体,连不上(大陆、部分学校网络)就只显示一个方框。
+/// 大小和颜色跟随所在文字:[style] 传给 Text 的那个 style,没写的部分取 DefaultTextStyle。
+WidgetSpan iconSpan(IconData icon, {TextStyle? style, String? semanticLabel}) =>
+    WidgetSpan(alignment: PlaceholderAlignment.middle, child: _InlineIcon(icon, style, semanticLabel));
+
+class _InlineIcon extends StatelessWidget {
+  final IconData icon;
+  final TextStyle? style;
+  final String? semanticLabel;
+  const _InlineIcon(this.icon, this.style, this.semanticLabel);
+  @override
+  Widget build(BuildContext context) {
+    final s = DefaultTextStyle.of(context).style.merge(style);
+    return Icon(icon, size: (s.fontSize ?? 14) * 1.25, color: s.color, semanticLabel: semanticLabel);
   }
 }
 

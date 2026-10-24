@@ -378,11 +378,18 @@ class _StudyTab extends StatelessWidget {
           for (final l in logs.reversed.take(14))
             ListTile(
               dense: true,
-              leading: Text('⭐' * l.focus, style: const TextStyle(fontSize: 10)),
+              leading: Semantics(
+                label: '${s.focus} ${l.focus}/5',
+                child: Row(mainAxisSize: MainAxisSize.min, children: [for (var i = 0; i < l.focus; i++) const Icon(Icons.star, size: 12, color: Color(0xFFE09A1B))]),
+              ),
               title: Text('${s.relative(l.day)} · ${l.homeworkDone ? '✓ ' : '✗ '}${s.homeworkDone} · ${l.readingMinutes} min'),
               subtitle: l.note.isEmpty && l.teacherNote.isEmpty
                   ? null
-                  : Text([if (l.note.isNotEmpty) l.note, if (l.teacherNote.isNotEmpty) '🏫 ${l.teacherNote}'].join('\n')),
+                  : Text.rich(TextSpan(children: [
+                      if (l.note.isNotEmpty) TextSpan(text: l.note),
+                      if (l.note.isNotEmpty && l.teacherNote.isNotEmpty) const TextSpan(text: '\n'),
+                      if (l.teacherNote.isNotEmpty) ...[iconSpan(Icons.school_outlined, semanticLabel: s.teacherNote), TextSpan(text: ' ${l.teacherNote}')],
+                    ])),
               isThreeLine: l.note.isNotEmpty && l.teacherNote.isNotEmpty,
               onTap: () => showStudyLogEditor(context, childId: child.id, day: l.day),
             ),
