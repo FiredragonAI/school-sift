@@ -46,10 +46,13 @@ jobs:
         #   fonts.gstatic.com(连不上时 CDN 版直接白屏;代价是首访多下约 0.56–0.69 MB)。
         # FEEDBACK_FORM_URL:仓库变量(Settings → Secrets and variables → Actions → Variables),
         #   「用英文回复」反馈卡的表单地址;没设时反馈卡只提供「复制反馈」。见 app/lib/core/reply_feedback.dart。
+        #   地址里有 & { },经环境变量加引号传入,不直接拼进命令。
+        env:
+          FEEDBACK_FORM_URL: ${{ vars.FEEDBACK_FORM_URL }}
         run: >-
           flutter build web --release --no-web-resources-cdn
           --base-href "/${{ github.event.repository.name }}/"
-          --dart-define=FEEDBACK_FORM_URL=${{ vars.FEEDBACK_FORM_URL }}
+          --dart-define="FEEDBACK_FORM_URL=$FEEDBACK_FORM_URL"
 
       - name: Bundle privacy policy alongside the app
         run: cp ../docs/privacy-policy.html build/web/
