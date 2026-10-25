@@ -55,7 +55,7 @@ docs/delete-account.html                  账号删除说明页(Play 要求的�
 剩下必须你本人在 Play Console 里做的(Google 不允许用 API 代办):
 
 ### 1. 建应用
-Play Console → **创建应用**:应用名「学校通 · SchoolSift」,默认语言(见 PLAY_LISTING.md 的问题),类型「应用」,「免费」,勾选声明。
+Play Console → **创建应用**:应用名「学校通 · SchoolSift」,包名 `io.github.firedragonai.school_sift`,默认语言简体中文(zh-CN),类型「应用」,「免费」,勾选声明。✅ 2026-10-24 已完成
 
 ### 2. 给服务账号授权
 Play Console → **用户和权限** → **邀请新用户** → 邮箱填
@@ -66,15 +66,15 @@ Play Console → **用户和权限** → **邀请新用户** → 邮箱填
 - **发布到正式版、排除设备、使用 Play App Signing**(以后要用 `production` 命令时才需要;只做内部测试可以先不勾)
 - **管理商店展示**(要用 `metadata` 命令时)
 
-→ 邀请。服务账号不用接受邀请,授权几分钟内生效。
+→ 邀请。服务账号不用接受邀请,授权几分钟内生效。✅ 2026-10-24 已授权「发布到测试轨道」
 
 ### 3. Play App Signing
 新应用默认由 Google 生成并保管**应用签名密钥**,我们只用上传密钥签名——推荐保持默认(见 PLAY_LISTING.md 问题 4 里对 GitHub 安装包用户的影响)。
 
-### 4. 手动上传第一个版本(API 的硬性限制)
-Play Console → 学校通 → **测试 → 内部测试** → 创建测试人员名单(加你自己的 Google 账号邮箱)→ **创建新发布** → 上传
-`app/build/app/outputs/bundle/release/app-release.aab`(运行 `play-release.cmd internal` 生成,versionCode 5)
-→ 发布说明可复制 `app/android/fastlane/metadata/android/zh-CN/changelogs/5.txt` → 保存 → 审核并发布到内部测试。
+### 4. 第一个版本 + 内部测试人员
+现在的 Play Console 在建应用时就登记了包名,第一个版本可以直接用 API 上传(过去要求手动传,现在不用了):`play-release.cmd internal`。✅ 2026-10-24 已上传 0.4.1(versionCode 5)到内部测试。
+还要你在 Play Console → 学校通 → **测试 → 内部测试 → 测试人员** 里建名单、加测试者的 Google 账号邮箱,复制「加入测试」链接发给他们;测试者在手机上打开链接接受邀请后,就能从 Play 商店安装。
+(如果某个账号 / 应用状态下 API 仍报 `Package not found`,就在内部测试页手动「创建新发布」上传一次 `app/build/app/outputs/bundle/release/app-release.aab`。)
 
 ### 5. 补全「应用内容」和商店资料
 Play Console 左侧「**政策 → 应用内容**」里每一项都要填完才能发布到任何轨道之外的地方。答案草稿在 [PLAY_LISTING.md](PLAY_LISTING.md):隐私政策网址、广告(无)、应用访问权限、内容分级问卷、目标受众、Data safety、账号删除网址、政府应用、金融功能、健康。
@@ -110,7 +110,7 @@ GitHub Releases 的 APK 照旧用 `flutter build apk --split-per-abi`(见 README
 
 | 现象 / 日志里的关键词 | 原因 | 处理 |
 |---|---|---|
-| `Package not found: io.github.firedragonai.school_sift` | Play Console 里还没建应用,或还没手动传过第一个版本 | 做首次配置第 1、4 步。`internal` 会照常构建 AAB 并停在上传前,告诉你 AAB 的路径 |
+| `Package not found: io.github.firedragonai.school_sift` | Play Console 里还没建应用(或服务账号还没被授权) | 做首次配置第 1、4 步。`internal` 会照常构建 AAB 并停在上传前,告诉你 AAB 的路径 |
 | `The caller does not have permission` / 403 | 服务账号没被邀请,或权限不够(比如没勾正式版就跑 `production`) | 首次配置第 2 步;改完等几分钟 |
 | `Google Play Android Developer API has not been used` | API 没开 | 在 Google Cloud 控制台的 `schoolsift-family` 项目里启用 Google Play Android Developer API |
 | `invalid_grant` / `Invalid JWT` | 密钥被删除、服务账号被删,或电脑时间不准 | 校准时间;或在 Google Cloud 里给服务账号新建密钥,放到 `~/.secrets/school-sift/play-service-account.json` |

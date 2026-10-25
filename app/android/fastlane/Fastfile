@@ -119,7 +119,7 @@ end
 # 常见错误 → 中文提示(也用在 Play API 的异常信息上)。处理方法详见 docs/PLAY_RELEASE.md「常见错误」。
 DIAGNOSES = [
   [/Package not found|applicationNotFound|No application was found/i,
-   "Play Console 里还没有这个应用,或还没手动上传过第一个版本。首次上架必须在 Play Console 建应用并手动上传第一个 AAB(见 PLAY_RELEASE.md 第 4 步)"],
+   "Play Console 里还没有这个应用,或服务账号没被授权:先在 Play Console 建应用并授权服务账号;少数情况要在内部测试页手动上传一次 AAB(见 PLAY_RELEASE.md 首次配置)"],
   [/caller does not have permission|insufficientPermissions|permissionDenied|403/i,
    "服务账号没有这个应用的权限:Play Console → 用户和权限 → 邀请 play-publisher@schoolsift-family.iam.gserviceaccount.com 并勾选本应用的发布权限;刚授权的要等几分钟"],
   [/Google Play Android Developer API has not been used|androidpublisher.*disabled/i,
@@ -231,7 +231,7 @@ def preflight(need_play: true)
   UI.success("服务账号密钥有效")
 end
 
-# Play 上这个应用的状态::ok / :not_found(没建或没手动传过第一个版本)/ 抛错
+# Play 上这个应用的状态::ok / :not_found(没建应用或没授权)/ 抛错
 def play_state
   @play_state ||= begin
     google_play_track_version_codes(track: "internal")
@@ -359,7 +359,7 @@ platform :android do
       codes = play_version_codes
       UI.success("Play 上已有的 versionCode:#{codes.empty? ? '(无)' : codes.join(', ')}")
     else
-      UI.important("Play Console 里还找不到 #{PACKAGE}:首次上架要先在 Play Console 建应用并手动上传第一个 AAB(见 docs/PLAY_RELEASE.md)")
+      UI.important("Play Console 里还找不到 #{PACKAGE}:先在 Play Console 建应用并授权服务账号(见 docs/PLAY_RELEASE.md 首次配置)")
     end
     summary["play_state"] = state.to_s
     problems = check_metadata
@@ -392,7 +392,8 @@ platform :android do
     end
     UI.message("Play 上已有 versionCode:#{play_codes.empty? ? '(无)' : play_codes.join(', ')};pubspec 里是 #{local_code}")
     UI.success("这次用 versionName #{name},versionCode #{code}")
-    write_pubspec_version(name, code) if code != local_code || name != pubspec_version[0]
+    bumped = code != local_code || name != pubspec_version[0]
+    write_pubspec_version(name, code) if bumped
 
     UI.header("构建 Release AAB")
     FileUtils.rm_f(AAB_PATH)
@@ -405,10 +406,10 @@ platform :android do
       summary["result"] = "built_only_first_upload_needed"
       write_summary
       UI.important(<<~MSG)
-        AAB 已构建并校验通过,但 Play Console 里还没有这个应用(或从没手动传过版本),API 现在不能上传。
-        首次上架请按 docs/PLAY_RELEASE.md 第 4 步:在 Play Console 建应用 → 内部测试 → 新建发布 → 手动上传
+        AAB 已构建并校验通过,但 API 找不到这个应用(没建应用,或服务账号没授权),现在不能上传。
+        按 docs/PLAY_RELEASE.md 首次配置第 1、2 步建应用并授权;仍不行就在内部测试页手动上传一次
           #{AAB_PATH}
-        之后再用 play-release.cmd internal 就能自动上传了。
+        然后重新运行 play-release.cmd internal。
       MSG
       next
     end
@@ -448,8 +449,8 @@ platform :android do
       已上传到内部测试:#{PACKAGE} #{name}(versionCode #{code}),发布状态 #{status}
       Play Console:#{CONSOLE_URL} → 学校通 → 测试 → 内部测试
       日志与 summary.json:#{LOG_DIR}
-      pubspec.yaml 的版本号已改为 #{name}+#{code},记得提交。
     MSG
+    UI.important("pubspec.yaml 的版本号已改为 #{name}+#{code},记得提交。") if bumped
   end
 
   desc "把内部测试里已有的版本提升到正式版(只建草稿,需两次确认,不自动发布)"
