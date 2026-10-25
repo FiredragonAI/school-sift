@@ -121,7 +121,7 @@ DIAGNOSES = [
   [/Package not found|applicationNotFound|No application was found/i,
    "Play Console 里还没有这个应用,或服务账号没被授权:先在 Play Console 建应用并授权服务账号;少数情况要在内部测试页手动上传一次 AAB(见 PLAY_RELEASE.md 首次配置)"],
   [/caller does not have permission|insufficientPermissions|permissionDenied|403/i,
-   "服务账号没有这个应用的权限:Play Console → 用户和权限 → 邀请 play-publisher@schoolsift-family.iam.gserviceaccount.com 并勾选本应用的发布权限;刚授权的要等几分钟"],
+   "服务账号权限不够:Play Console → 用户和权限 → play-publisher@schoolsift-family.iam.gserviceaccount.com → 应用权限。internal 要「发布到测试轨道」,metadata / details 要「管理商店展示」,production 要「发布到正式版」;改完等几分钟"],
   [/Google Play Android Developer API has not been used|androidpublisher.*disabled/i,
    "Google Cloud 项目 schoolsift-family 里没开 Google Play Android Developer API"],
   [/invalid_grant|Invalid JWT|account not found/i,
@@ -170,6 +170,18 @@ def key_properties
   File.readlines(file, chomp: true).each_with_object({}) do |l, h|
     k, v = l.split("=", 2)
     h[k.strip] = v.to_s.strip if v && !k.strip.start_with?("#")
+  end
+end
+
+# metadata / details 的确认:交互终端里问 y/n;非交互环境只有显式传 yes:true 才放行。
+# production 不走这里,永远要求交互终端 + 两次确认。
+def confirm_or_yes!(options, question)
+  if UI.interactive?
+    UI.user_error!("已取消") unless UI.confirm(question)
+  elsif options[:yes].to_s == "true"
+    UI.important("#{question} → 命令行已带 yes:true,视为已确认")
+  else
+    UI.user_error!("需要确认:请在交互终端里运行,或在已获本人同意时加 yes:true")
   end
 end
 
@@ -500,16 +512,15 @@ platform :android do
   end
 
   desc "上传商店文字、图标、截图(需确认;不上传安装包)"
-  lane :metadata do
+  lane :metadata do |options|
     summary["lane"] = "metadata"
-    UI.user_error!("需要在交互终端里运行(要人工确认)") unless UI.interactive?
     preflight
     UI.user_error!("Play Console 里还找不到这个应用") unless play_state == :ok
     problems = check_metadata
     UI.user_error!("商店资料有问题:\n  - #{problems.join("\n  - ")}") unless problems.empty?
     langs = Dir.glob(File.join(METADATA_DIR, "*")).select { |d| File.directory?(d) }.map { |d| File.basename(d) }
     UI.important("将覆盖 Play 商店里这些语言的标题、简介、图标、置顶大图和手机截图:#{langs.join(', ')}")
-    UI.user_error!("已取消") unless UI.confirm("确认上传商店资料?")
+    confirm_or_yes!(options, "确认上传商店资料?")
     upload_to_play_store(
       metadata_path: METADATA_DIR,
       skip_upload_aab: true,
@@ -520,6 +531,39 @@ platform :android do
     summary["result"] = "metadata_uploaded"
     write_summary
     UI.success("商店资料已上传。已发布的应用改资料也要经过 Google 审核。")
+  end
+
+  desc "设置商店默认语言和联系邮箱(需要「管理商店展示」权限;需确认)"
+  lane :details do |options|
+    summary["lane"] = "details"
+    preflight
+    UI.user_error!("Play Console 里还找不到这个应用") unless play_state == :ok
+    lang = ENV["PLAY_DEFAULT_LANGUAGE"].to_s
+    email = ENV["PLAY_CONTACT_EMAIL"].to_s
+    UI.user_error!("在 app/android/fastlane/.env.default 里设置 PLAY_DEFAULT_LANGUAGE") if lang.empty?
+    UI.user_error!("在 app/android/fastlane/.env(不进 git)里设置 PLAY_CONTACT_EMAIL") if email.empty?
+
+    require "supply"
+    Supply.config = FastlaneCore::Configuration.create(Supply::Options.available_options,
+                                                       { json_key: json_key_path, package_name: PACKAGE })
+    client = Supply::Client.make_from_config
+    client.begin_edit(package_name: PACKAGE)
+    current = client.client.get_edit_detail(PACKAGE, client.current_edit.id)
+    UI.message("现在:默认语言 #{current.default_language},联系邮箱 #{current.contact_email.to_s.empty? ? "(空)" : current.contact_email}")
+    UI.important("改为:默认语言 #{lang},联系邮箱 #{email}(会公开显示在商店页)")
+    begin
+      confirm_or_yes!(options, "确认修改商店默认语言和联系邮箱?")
+    rescue StandardError
+      client.abort_current_edit
+      raise
+    end
+    current.default_language = lang
+    current.contact_email = email
+    client.client.update_edit_detail(PACKAGE, client.current_edit.id, current)
+    client.commit_current_edit!
+    summary.merge!("result" => "details_updated", "default_language" => lang)
+    write_summary
+    UI.success("已更新:默认语言 #{lang},联系邮箱已设置")
   end
 
   error do |lane, exception|

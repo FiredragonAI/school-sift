@@ -1,6 +1,6 @@
-# Google Play 商店资料与「应用内容」问卷草稿
+# Google Play 商店资料与「应用内容」问卷
 
-能从代码确定的已经填好;标 **❓** 的需要你确认,我不替你编。
+能从代码确定的已经填好;需要人决定的,2026-10-24 已由开发者确认(见文末「已确认的决定」)。
 
 ## 商店资料(已在 `app/android/fastlane/metadata/android/`)
 
@@ -14,7 +14,7 @@
 | 手机截图 | images/phoneScreenshots/1–6 | 同左(英文界面 + 英文演示数据) | 2–8 张,1080×1920(9:16)✓ |
 | 首版更新说明 | changelogs/5.txt | changelogs/5.txt | ≤ 500 ✓ |
 | 隐私政策网址 | https://firedragonai.github.io/school-sift/privacy-policy.html | | 已上线 ✓ |
-| 删除账号网址 | https://firedragonai.github.io/school-sift/delete-account.html | | 随这次提交部署 |
+| 删除账号网址 | https://firedragonai.github.io/school-sift/delete-account.html | | 已上线 ✓ |
 
 截图来自网页版(和 Android 同一套 Flutter 界面),演示数据,不含真实个人信息;没有手机状态栏。重拍:`app/tools/store/`(`npm run shots`、`npm run feature`)。
 
@@ -38,7 +38,7 @@
 
 ---
 
-## Data safety(数据安全)草稿
+## Data safety(数据安全)——按此填写
 
 依据:代码、[Firebase 的 Play 数据披露说明](https://firebase.google.com/docs/android/play-data-disclosure)、[ML Kit 的 Android 数据披露说明](https://developers.google.com/ml-kit/android-data-disclosure)。最终怎么填由你决定(Google 也是这么要求的)。
 
@@ -53,23 +53,23 @@
 |---|---|---|---|
 | 个人信息 → 电子邮件地址 | 可选(只在开启家庭同步时) | 账号管理、应用功能 | 家庭同步登录、邀请家人 |
 | 个人信息 → 用户 ID | 可选 | 账号管理、应用功能 | Firebase 账号 UID |
-| 个人信息 → 姓名 ❓ | 可选 | 应用功能 | 家长录入的孩子名字、家庭成员称呼(同步时上传)。孩子的名字算不算「姓名」由你判断,保守起见建议勾上 |
+| 个人信息 → 姓名 | 可选 | 应用功能 | 家长录入的孩子名字、家庭成员称呼(同步时上传);保守起见申报 |
 | 照片和视频 → 照片 | 可选 | 应用功能 | 同步时上传的通知 / 回执照片(压缩后) |
 | 应用活动 → 其他用户生成的内容 | 可选 | 应用功能 | 通知原文、日程、待办、成绩、学习记录、英文回信 |
-| 应用信息和性能 → 诊断信息 | 必需 ❓ | 分析(诊断) | ML Kit 文字识别会发送设备型号、系统版本、延迟、错误码等诊断数据(官方说明) |
-| 设备或其他 ID ❓ | 必需 | 分析(诊断) | ML Kit 说明里列了「按安装生成的标识,不用于识别用户或设备」 |
+| 应用信息和性能 → 诊断信息 | 必需 | 分析(诊断) | ML Kit 文字识别会发送设备型号、系统版本、延迟、错误码等诊断数据(官方说明) |
+| 设备或其他 ID | 必需 | 分析(诊断) | ML Kit 说明里列了「按安装生成的标识,不用于识别用户或设备」 |
 
 **不收集**:位置、通讯录、短信、通话、财务信息、健康、网页浏览记录、已安装应用、音频、文件和文档(PDF 只在本机识别,同步的是识别出来的文字)。
 
-**❓ 用户自己的 Claude API key 的场景**:家长主动点「用 AI 识别 / 用英文回复」时,这一条通知的文字和图片会从手机直接发到 Anthropic(api.anthropic.com),用的是家长自己的 key,不经过我们。这些内容已经被上面的「照片」「其他用户生成的内容」覆盖;要不要把 Anthropic 视为「分享」,建议你读一下 Play 对「用户主动发起的传输」的豁免条款后决定。我的建议:不勾「分享」,在隐私政策里写清楚(已写)。
+**用户自己的 Claude API key 的场景**:家长主动点「用 AI 识别 / 用英文回复」时,这一条通知的文字和图片会从手机直接发到 Anthropic(api.anthropic.com),用的是家长自己的 key,不经过我们。这些内容已经被上面的「照片」「其他用户生成的内容」覆盖;属于用户主动发起、发往用户自己选择的服务:**不勾「分享」**,隐私政策里已写清楚。
 
-Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 表格里没有单独的「IP 地址」类型,Google 的说明是按用途归类——只用于安全时一般不需要单独勾选,❓ 由你确认。
+Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 表格里没有单独的「IP 地址」类型,Google 的说明是按用途归类——只用于安全,**不单独申报**。
 
-## 内容分级(IARC 问卷)草稿
+## 内容分级(IARC 问卷)——按此填写
 
 - 类别:**实用工具、生产力、通讯或其他**(Utility, Productivity, Communication, or Other)
 - 暴力、恐怖、性、粗话、毒品 / 烟酒、赌博、模拟赌博:**都没有**
-- **❓ 用户之间是否可以互动或交换内容?** 家庭同步让被邀请的家人看到、修改同一份数据。建议答「**是**」(只限受邀家人;没有公开聊天、没有陌生人)。答「是」会多一个「用户互动」标签,不影响年龄分级
+- **用户之间是否可以互动或交换内容?答「是」**:家庭同步让被邀请的家人看到、修改同一份数据(只限受邀家人;没有公开聊天、没有陌生人)。答「是」会多一个「用户互动」标签,不影响年龄分级
 - 是否分享用户的实时位置:**否**
 - 是否允许购买数字商品:**否**
 - 是否包含不受限制的网络访问(内置浏览器):**否**(链接用系统浏览器打开)
@@ -77,7 +77,7 @@ Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 
 
 ## 目标受众和内容
 
-- **❓ 目标年龄:18 岁以上**(应用给家长用;孩子不需要也不应该注册——隐私政策已写)。选 18+ 可以避开「家庭政策」的额外要求
+- **目标年龄:18 岁以上**(应用给家长用;孩子不需要也不应该注册——隐私政策已写)。选 18+ 可以避开「家庭政策」的额外要求
 - 应用是否会无意中吸引儿童?**否**(界面是家长工具,无卡通游戏元素)
 
 ## 其他「应用内容」声明
@@ -86,7 +86,7 @@ Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 
 |---|---|
 | 隐私政策 | https://firedragonai.github.io/school-sift/privacy-policy.html |
 | 广告 | 不含广告 |
-| 应用访问权限 | **所有功能无需登录即可使用**;家庭同步需要账号——审核员可自行注册(邮箱验证)。❓ 如果你希望审核员直接看到家庭同步,需要提供一个测试账号,我可以帮你建 |
+| 应用访问权限 | 不提供测试账号(已确认)。选「部分功能受限」,说明写:*Core features work without an account. Family sync (More → Family sync) needs an account: tap Sign up, enter any email you can receive mail at, verify it, then create a family.* 不填用户名密码。若审核要求测试账号再补 |
 | 账号删除 | 应用内可删除;网址 https://firedragonai.github.io/school-sift/delete-account.html |
 | 政府应用 | 否 |
 | 金融功能 | 无(「缴费」只是记录提醒,不处理付款) |
@@ -96,15 +96,18 @@ Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 
 
 ---
 
-## 需要你确认的问题
+## 已确认的决定(2026-10-24)
 
-1. **开发者账号**:用和 Listen Everything 同一个 Play 开发者账号吗?是**个人**账号还是**组织**账号?(个人账号要先完成 12 人 × 14 天的封闭测试才能上正式版。)
-2. **Play Console 里是否已经建过「学校通」?**(`check` 显示 API 找不到 `io.github.firedragonai.school_sift`,应该是还没建。)
-3. **默认语言和上架地区**:默认语言用 **中文(简体)zh-CN** 还是 **英语(美国)en-US**?先只上美国,还是全球(中国大陆没有 Google Play)?
-4. **签名方式**:推荐用 Google 生成的应用签名密钥(默认,丢了也不怕)。代价:Play 下载的版本和 GitHub Releases 的 APK 签名不同,装过 GitHub 版的人要先导出备份(或开家庭同步)、卸载,再从 Play 安装。另一选择是把现有上传密钥导入为应用签名密钥,两边签名一致,但 Play 不能替你轮换密钥。你选哪个?
-5. **商店联系邮箱**:Play 要求在商店页公开一个开发者邮箱(应用和源码里依旧不写个人邮箱)。用哪个邮箱?建议单独建一个支持邮箱。
-6. **英文标题**用「SchoolSift: School Notices」可以吗?中文标题「学校通 · SchoolSift」可以吗?
-7. **应用类别**:「教育」还是「育儿」(Parenting)?我建议「育儿」——用户是家长。
-8. **内部测试人员**:要加哪些 Google 账号邮箱?(在 Play Console 里加,不写进代码。)
-9. Data safety 里标 ❓ 的三项(孩子姓名、ML Kit 诊断与标识、Anthropic)和内容分级的「用户互动」,按我的建议填可以吗?
-10. 审核员要不要一个家庭同步的测试账号?
+| 问题 | 决定 |
+|---|---|
+| 开发者账号 | **个人**账号 → 正式版前要封闭测试 12 人 × 连续 14 天 |
+| Play 应用 | 已建,包名 `io.github.firedragonai.school_sift`;0.4.1(versionCode 5)已用 API 传到内部测试 |
+| 默认语言 | **英语(美国)en-US**(建应用时选的是 zh-CN,用 `play-release.cmd details` 改,需要「管理商店展示」权限);中文作为翻译 |
+| 上架地区 | **全球**(Play Console 里给每个轨道选「所有国家/地区」;中国大陆没有 Google Play) |
+| 签名 | Google 生成并保管应用签名密钥(默认) |
+| 联系邮箱 | 已定,只写在本机 `app/android/fastlane/.env`(不进 git),由 `play-release.cmd details` 命令设置;会公开显示在商店页 |
+| 类别 | **教育**(Education)——API 改不了,在 Play Console「商店设置」里选 |
+| 英文标题 | SchoolSift: School Notices |
+| Data safety / 内容分级 | 按上面的建议填 |
+| 审核测试账号 | 不提供 |
+| 内部测试人员 | 开发者在 Play Console 里自己加 |

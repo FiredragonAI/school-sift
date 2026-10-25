@@ -1,10 +1,10 @@
 @echo off
 rem SchoolSift Google Play release. See docs\PLAY_RELEASE.md
-rem   play-release.cmd check | internal | production | metadata   [key:value ...]
+rem   play-release.cmd check | internal | production | metadata | details   [key:value ...]
 setlocal
 chcp 65001 >nul
 if "%~1"=="" (
-  echo Usage: play-release.cmd check ^| internal ^| production ^| metadata  [version_code:N] [version_name:x.y.z]
+  echo Usage: play-release.cmd check ^| internal ^| production ^| metadata ^| details  [version_code:N] [version_name:x.y.z] [yes:true]
   exit /b 2
 )
 where bundle >nul 2>nul || set "PATH=C:\Ruby33-x64\bin;%PATH%"

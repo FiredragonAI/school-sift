@@ -8,8 +8,10 @@
 | `play-release.cmd internal` | 测试 → 自动定 versionCode → 构建 AAB → 校验签名 / 版本 / targetSdk / 16 KB → 上传**内部测试** | 只动 internal 轨道 |
 | `play-release.cmd production` | 把内部测试里**已有**的某个版本提升到正式版,只建**草稿**;要回答 y 并输入 `PRODUCTION-<versionCode>` | 正式版轨道多一个草稿,不发布、不送审 |
 | `play-release.cmd metadata` | 上传商店标题、简介、图标、置顶大图、截图(要确认) | 改商店资料 |
+| `play-release.cmd details` | 设置商店默认语言(`.env.default` 的 PLAY_DEFAULT_LANGUAGE)和公开联系邮箱(本机 `fastlane/.env` 的 PLAY_CONTACT_EMAIL,不进 git)(要确认) | 改商店资料 |
 
 可选参数:`play-release.cmd internal version_code:12`、`version_name:0.5.0`;`play-release.cmd production version_code:12`。
+`metadata` / `details` 在交互终端里会问 y/n;在非交互环境(脚本、AI 助手)里只有本人已同意并显式加 `yes:true` 才执行。`production` 没有这个开关,永远要在交互终端里两次确认。
 在 Git Bash 里一样用 `./play-release.cmd internal`。
 
 ## 设计上的安全约束
