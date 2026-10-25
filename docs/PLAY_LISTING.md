@@ -102,7 +102,7 @@ Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 
 |---|---|
 | 开发者账号 | **个人**账号 → 正式版前要封闭测试 12 人 × 连续 14 天 |
 | Play 应用 | 已建,包名 `io.github.firedragonai.school_sift`;0.4.1(versionCode 5)已用 API 传到内部测试 |
-| 默认语言 | **英语(美国)en-US**(建应用时选的是 zh-CN,用 `play-release.cmd details` 改,需要「管理商店展示」权限);中文作为翻译 |
+| 默认语言 | **英语(美国)en-US**(建应用时选的是 zh-CN,2026-10-25 已用 `play-release.cmd details` 改好);中文作为翻译 |
 | 上架地区 | **全球**(Play Console 里给每个轨道选「所有国家/地区」;中国大陆没有 Google Play) |
 | 签名 | Google 生成并保管应用签名密钥(默认) |
 | 联系邮箱 | 已定,只写在本机 `app/android/fastlane/.env`(不进 git),由 `play-release.cmd details` 命令设置;会公开显示在商店页 |

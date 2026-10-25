@@ -121,7 +121,7 @@ DIAGNOSES = [
   [/Package not found|applicationNotFound|No application was found/i,
    "Play Console 里还没有这个应用,或服务账号没被授权:先在 Play Console 建应用并授权服务账号;少数情况要在内部测试页手动上传一次 AAB(见 PLAY_RELEASE.md 首次配置)"],
   [/caller does not have permission|insufficientPermissions|permissionDenied|403/i,
-   "服务账号权限不够:Play Console → 用户和权限 → play-publisher@schoolsift-family.iam.gserviceaccount.com → 应用权限。internal 要「发布到测试轨道」,metadata / details 要「管理商店展示」,production 要「发布到正式版」;改完等几分钟"],
+   "服务账号权限不够:Play Console → 用户和权限 → play-publisher@schoolsift-family.iam.gserviceaccount.com → 应用权限。internal 要「发布到测试轨道」,metadata / details 要「管理商店展示」(实测只勾它 API 仍 403,要临时开本应用的 Admin,跑完撤回),production 要「发布到正式版」;改完等几分钟"],
   [/Google Play Android Developer API has not been used|androidpublisher.*disabled/i,
    "Google Cloud 项目 schoolsift-family 里没开 Google Play Android Developer API"],
   [/invalid_grant|Invalid JWT|account not found/i,
