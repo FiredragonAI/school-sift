@@ -20,10 +20,10 @@ require "zip"
 
 default_platform(:android)
 
-PACKAGE = "io.cspeed.school_sift"
-# 上传密钥(~/school-sift-upload-keystore.jks)的证书 SHA-1。签出来的 AAB 不是这个就拒绝上传,
+PACKAGE = "io.github.firedragonai.school_sift"
+# 上传密钥(~/schoolsift-upload-firedragonai.jks)的证书 SHA-1。签出来的 AAB 不是这个就拒绝上传,
 # 防止 key.properties 丢了以后 Gradle 悄悄回退成 debug 签名。
-UPLOAD_CERT_SHA1 = "9F:80:5F:BD:A5:E1:27:C0:70:65:46:DD:04:D5:A3:F2:60:AC:7A:D4"
+UPLOAD_CERT_SHA1 = "04:98:37:69:3D:C8:5E:A0:8E:5F:58:BF:63:C9:FB:18:98:60:BE:57"
 MIN_TARGET_SDK = 35 # Google Play 对新应用和更新的 targetSdk 下限
 TRACKS = %w[internal alpha beta production].freeze
 BUNDLETOOL_VERSION = "1.18.3"
@@ -131,7 +131,7 @@ DIAGNOSES = [
   [/Only releases with status draft may be created on draft app/i,
    "应用还在「草稿」状态(从未发布过),API 只能建草稿发布:去 Play Console 的内部测试页面手动点「发布」"],
   [/signed with the wrong key|wrong key|signed in debug mode/i,
-   "签名不对:上传的 AAB 必须用上传密钥签名。检查 app/android/key.properties 和 ~/school-sift-upload-keystore.jks"],
+   "签名不对:上传的 AAB 必须用上传密钥签名。检查 app/android/key.properties 和 ~/schoolsift-upload-firedragonai.jks"],
   [/Keystore was tampered with|password was incorrect|Failed to read key/i,
    "签名密钥密码不对或密钥文件损坏:检查 app/android/key.properties(或环境变量)里的密码"],
   [/production.*(not allowed|access)|closed test/i,

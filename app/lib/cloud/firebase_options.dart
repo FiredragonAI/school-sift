@@ -26,7 +26,7 @@ class CloudOptions {
 
   static const android = FirebaseOptions(
     apiKey: 'AIzaSyA7kNC96CN_AWgPmG6gT2EWLNM0634YS24',
-    appId: '1:738217985306:android:fdb705109e3cbab7c558a3',
+    appId: '1:738217985306:android:58cdf95dd7f9f563c558a3',
     messagingSenderId: '738217985306',
     projectId: 'schoolsift-family',
     storageBucket: 'schoolsift-family.firebasestorage.app',

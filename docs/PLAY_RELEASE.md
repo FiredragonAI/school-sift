@@ -18,7 +18,7 @@
 - 不删除、不停用任何已有发布:提升时 `deactivate_on_promote: false`,内部测试保持原样。
   (注意:往 internal 传新版本时,内部测试人员会自动收到新版本——这是内部测试轨道本身的行为。)
 - 不自动公开发布、不替你送审:正式版草稿要你本人在 Play Console 检查后点「发布 / 送审」。
-- 签名不是上传密钥(SHA-1 `9F:80:5F:BD:…:7A:D4`)就拒绝上传,防止 key.properties 丢失后回退成 debug 签名。
+- 签名不是上传密钥(SHA-1 `04:98:37:69:…:BE:57`)就拒绝上传,防止 key.properties 丢失后回退成 debug 签名。
 - 密钥不进 git:`app/android/key.properties`、`*.jks`、服务账号 JSON 都在 `.gitignore` 里,`check` 每次都会验证。
 
 ## 文件
@@ -40,7 +40,7 @@ docs/delete-account.html                  账号删除说明页(Play 要求的�
 
 | 密钥 | 位置 | 说明 |
 |---|---|---|
-| 上传密钥 | `~/school-sift-upload-keystore.jks` | **务必另外备份**(密码管理器 / 加密盘)。开启 Play App Signing 后丢了可以向 Google 申请重置上传密钥,但很麻烦 |
+| 上传密钥 | `~/schoolsift-upload-firedragonai.jks` | **务必另外备份**(密码管理器 / 加密盘)。开启 Play App Signing 后丢了可以向 Google 申请重置上传密钥,但很麻烦 |
 | 上传密钥密码 | `app/android/key.properties`(git 忽略) | storePassword / keyPassword / keyAlias / storeFile |
 | Play 服务账号 | `~/.secrets/school-sift/play-service-account.json` | 已限制为只有当前 Windows 用户可读。泄露时到 Google Cloud 控制台删除这把密钥再生成新的 |
 
@@ -73,8 +73,8 @@ Play Console → **用户和权限** → **邀请新用户** → 邮箱填
 
 ### 4. 手动上传第一个版本(API 的硬性限制)
 Play Console → 学校通 → **测试 → 内部测试** → 创建测试人员名单(加你自己的 Google 账号邮箱)→ **创建新发布** → 上传
-`app/build/app/outputs/bundle/release/app-release.aab`(运行 `play-release.cmd internal` 生成,versionCode 4)
-→ 发布说明可复制 `app/android/fastlane/metadata/android/zh-CN/changelogs/4.txt` → 保存 → 审核并发布到内部测试。
+`app/build/app/outputs/bundle/release/app-release.aab`(运行 `play-release.cmd internal` 生成,versionCode 5)
+→ 发布说明可复制 `app/android/fastlane/metadata/android/zh-CN/changelogs/5.txt` → 保存 → 审核并发布到内部测试。
 
 ### 5. 补全「应用内容」和商店资料
 Play Console 左侧「**政策 → 应用内容**」里每一项都要填完才能发布到任何轨道之外的地方。答案草稿在 [PLAY_LISTING.md](PLAY_LISTING.md):隐私政策网址、广告(无)、应用访问权限、内容分级问卷、目标受众、Data safety、账号删除网址、政府应用、金融功能、健康。
@@ -84,7 +84,7 @@ Play Console 左侧「**政策 → 应用内容**」里每一项都要填完才�
 ```bash
 ./play-release.cmd check
 ```
-应显示「Play 上已有的 versionCode:4」。之后每次 `play-release.cmd internal` 都会自动上传。
+应显示「Play 上已有的 versionCode:5」。之后每次 `play-release.cmd internal` 都会自动上传。
 
 ### 7. 正式版之前(个人开发者账号)
 2023-11-13 之后注册的**个人**开发者账号,要先在**封闭测试**里有至少 **12 名**测试者**连续 14 天**参与,才能申请正式版访问权限。内部测试不算。流程:Play Console → 测试 → 封闭测试 → 建轨道、加测试者 → 把版本发布到封闭测试(可在 Console 里从内部测试「提升」)→ 满 14 天后在「信息中心」申请正式版。组织账号没有这个要求。
@@ -110,7 +110,7 @@ GitHub Releases 的 APK 照旧用 `flutter build apk --split-per-abi`(见 README
 
 | 现象 / 日志里的关键词 | 原因 | 处理 |
 |---|---|---|
-| `Package not found: io.cspeed.school_sift` | Play Console 里还没建应用,或还没手动传过第一个版本 | 做首次配置第 1、4 步。`internal` 会照常构建 AAB 并停在上传前,告诉你 AAB 的路径 |
+| `Package not found: io.github.firedragonai.school_sift` | Play Console 里还没建应用,或还没手动传过第一个版本 | 做首次配置第 1、4 步。`internal` 会照常构建 AAB 并停在上传前,告诉你 AAB 的路径 |
 | `The caller does not have permission` / 403 | 服务账号没被邀请,或权限不够(比如没勾正式版就跑 `production`) | 首次配置第 2 步;改完等几分钟 |
 | `Google Play Android Developer API has not been used` | API 没开 | 在 Google Cloud 控制台的 `schoolsift-family` 项目里启用 Google Play Android Developer API |
 | `invalid_grant` / `Invalid JWT` | 密钥被删除、服务账号被删,或电脑时间不准 | 校准时间;或在 Google Cloud 里给服务账号新建密钥,放到 `~/.secrets/school-sift/play-service-account.json` |

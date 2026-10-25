@@ -17,7 +17,7 @@ if (hasKeystore) {
 }
 
 android {
-    namespace = "io.cspeed.school_sift"
+    namespace = "io.github.firedragonai.school_sift"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -29,7 +29,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.cspeed.school_sift"
+        applicationId = "io.github.firedragonai.school_sift"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

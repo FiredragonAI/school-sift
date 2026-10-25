@@ -12,7 +12,7 @@
 | 应用图标 | images/icon.png | 同左 | 512×512 PNG,满版方形(Play 自动切圆角)✓ |
 | 置顶大图 | images/featureGraphic.png | 同左(英文) | 1024×500,24 位 PNG ✓ |
 | 手机截图 | images/phoneScreenshots/1–6 | 同左(英文界面 + 英文演示数据) | 2–8 张,1080×1920(9:16)✓ |
-| 首版更新说明 | changelogs/4.txt | changelogs/4.txt | ≤ 500 ✓ |
+| 首版更新说明 | changelogs/5.txt | changelogs/5.txt | ≤ 500 ✓ |
 | 隐私政策网址 | https://firedragonai.github.io/school-sift/privacy-policy.html | | 已上线 ✓ |
 | 删除账号网址 | https://firedragonai.github.io/school-sift/delete-account.html | | 随这次提交部署 |
 
@@ -25,11 +25,11 @@
 | 条件 | 状态 |
 |---|---|
 | 技术栈 | Flutter 3.47.3(Dart)+ Kotlin DSL Gradle,出 AAB |
-| applicationId | `io.cspeed.school_sift` |
-| versionName / versionCode | 来自 `pubspec.yaml`(现为 0.4.0+4);上传时自动取 Play 最大值 + 1 |
+| applicationId | `io.github.firedragonai.school_sift` |
+| versionName / versionCode | 来自 `pubspec.yaml`(现为 0.4.1+5);上传时自动取 Play 最大值 + 1 |
 | targetSdk / minSdk / compileSdk | 36 / 24 / 36(Play 下限 35 ✓) |
 | 64 位、16 KB 页 | arm64-v8a / armeabi-v7a / x86_64;64 位原生库 16 KB 对齐(流水线每次检查) |
-| Release 签名 | 上传密钥 `~/school-sift-upload-keystore.jks`,SHA-1 `9F:80:5F:BD:A5:E1:27:C0:70:65:46:DD:04:D5:A3:F2:60:AC:7A:D4` |
+| Release 签名 | 上传密钥 `~/schoolsift-upload-firedragonai.jks`,SHA-1 `04:98:37:69:3D:C8:5E:A0:8E:5F:58:BF:63:C9:FB:18:98:60:BE:57` |
 | Play App Signing | 新应用默认开启,Google 保管应用签名密钥 |
 | R8 混淆 | 开启;mapping.txt 随每次上传,崩溃堆栈可还原 |
 | 权限 | 相机(拍通知,`required=false`)、通知、开机后恢复提醒、震动、网络;无位置、通讯录、存储、精确闹钟、后台定位等敏感权限 |
@@ -99,7 +99,7 @@ Firebase Authentication 还会为了安全和防滥用收集 **IP 地址**;Play 
 ## 需要你确认的问题
 
 1. **开发者账号**:用和 Listen Everything 同一个 Play 开发者账号吗?是**个人**账号还是**组织**账号?(个人账号要先完成 12 人 × 14 天的封闭测试才能上正式版。)
-2. **Play Console 里是否已经建过「学校通」?**(`check` 显示 API 找不到 `io.cspeed.school_sift`,应该是还没建。)
+2. **Play Console 里是否已经建过「学校通」?**(`check` 显示 API 找不到 `io.github.firedragonai.school_sift`,应该是还没建。)
 3. **默认语言和上架地区**:默认语言用 **中文(简体)zh-CN** 还是 **英语(美国)en-US**?先只上美国,还是全球(中国大陆没有 Google Play)?
 4. **签名方式**:推荐用 Google 生成的应用签名密钥(默认,丢了也不怕)。代价:Play 下载的版本和 GitHub Releases 的 APK 签名不同,装过 GitHub 版的人要先导出备份(或开家庭同步)、卸载,再从 Play 安装。另一选择是把现有上传密钥导入为应用签名密钥,两边签名一致,但 Play 不能替你轮换密钥。你选哪个?
 5. **商店联系邮箱**:Play 要求在商店页公开一个开发者邮箱(应用和源码里依旧不写个人邮箱)。用哪个邮箱?建议单独建一个支持邮箱。

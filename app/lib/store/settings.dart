@@ -37,7 +37,7 @@ class Settings {
   });
 
   /// 显示用版本号;发版时与 pubspec.yaml 同步改
-  static const appVersion = '0.4.0';
+  static const appVersion = '0.4.1';
 
   static const defaultModel = 'claude-opus-5-5';
   static const models = <(String, String)>[
