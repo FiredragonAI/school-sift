@@ -159,7 +159,7 @@ class MoreScreen extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [const AppLogo(size: 36), const SizedBox(width: 10), Text('${s.appName} · SchoolSift ${Settings.appVersion}', style: Theme.of(context).textTheme.titleMedium)]),
+              Row(children: [const AppLogo(size: 36), const SizedBox(width: 10), Text('${s.t('学校通 · SchoolSift', 'SchoolSift')} ${Settings.appVersion}', style: Theme.of(context).textTheme.titleMedium)]),
               const SizedBox(height: 8),
               Text(s.privacy),
               const SizedBox(height: 4),
