@@ -18,7 +18,7 @@
 
 截图来自网页版(和 Android 同一套 Flutter 界面),演示数据,不含真实个人信息;没有手机状态栏。重拍:`app/tools/store/`(`npm run shots`、`npm run feature`)。
 
-应用里的显示名(手机桌面上)是「学校通」,英文系统下也是「学校通」;商店标题可以和它不同。
+手机桌面上的应用名跟随系统语言:中文系统(简体、繁体)显示「学校通」,其他语言显示「SchoolSift」(`res/values-zh/strings.xml`、`res/values/strings.xml`);商店标题可以和它不同。
 
 ## 技术条件(审计结果)
 
