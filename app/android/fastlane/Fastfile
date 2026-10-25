@@ -521,8 +521,13 @@ platform :android do
     langs = Dir.glob(File.join(METADATA_DIR, "*")).select { |d| File.directory?(d) }.map { |d| File.basename(d) }
     UI.important("将覆盖 Play 商店里这些语言的标题、简介、图标、置顶大图和手机截图:#{langs.join(', ')}")
     confirm_or_yes!(options, "确认上传商店资料?")
+    # supply 不给 version_code 时会拿 nil 去找版本而报错(过滤写错了),所以挂到内部测试最新的版本上;更新说明照样跳过
+    anchor = google_play_track_version_codes(track: "internal").max
+    UI.user_error!("内部测试轨道还没有版本,先运行 play-release.cmd internal") unless anchor
     upload_to_play_store(
       metadata_path: METADATA_DIR,
+      track: "internal",
+      version_code: anchor,
       skip_upload_aab: true,
       skip_upload_apk: true,
       skip_upload_changelogs: true,
