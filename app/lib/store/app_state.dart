@@ -11,10 +11,19 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../cloud/sync_merge.dart';
 import '../core/money.dart';
 import '../models/models.dart';
 import 'demo_data.dart';
 import 'settings.dart';
+
+/// 家庭同步的挂钩(实现在 cloud/family_sync.dart)。AppState 不认识 Firebase,只在保存和存取图片时通知它。
+abstract class StateSync {
+  /// 本机改了数据并保存了(内部自己合并多次调用)
+  void onLocalSave();
+  void onImagePut(String id, String b64);
+  void onImageRemoved(String id);
+}
 
 class AppState extends ChangeNotifier {
   static const _legacyPrefsKey = 'school_sift_v1';
@@ -41,6 +50,11 @@ class AppState extends ChangeNotifier {
   Box<String>? _images;
   /// 没有 Hive 时(widget 测试的 inMemory 模式)图片放这里
   final Map<String, String> _memImages = {};
+
+  /// 开了家庭同步时不为空;应用云端改动时不回推
+  StateSync? sync;
+  bool _applyingRemote = false;
+  bool get synced => sync != null;
 
   /// [hivePath] 只在测试里给(跳过 path_provider);[inMemory] 完全不碰 Hive(widget 测试用,FakeAsync 里做不了真实 IO)。
   Future<void> load({String? hivePath, bool inMemory = false}) async {
@@ -127,11 +141,12 @@ class AppState extends ChangeNotifier {
     List<Map<String, dynamic>> rows(String k) =>
         ((j[k] as List?) ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
-    // 备份里内嵌的图片先入库
+    // 备份里内嵌的图片先入库(开着同步时也推上去)
     final imgs = j['images'];
     if (imgs is Map) {
       for (final e in imgs.entries) {
-        _images?.put(e.key as String, e.value as String);
+        _storeImage(e.key as String, e.value as String);
+        sync?.onImagePut(e.key as String, e.value as String);
       }
     }
     // 0.1 版:图片以 imageB64 内嵌在通知/待办里 → 搬进图片库
@@ -164,6 +179,7 @@ class AppState extends ChangeNotifier {
   void _save({bool notify = true}) {
     if (notify) notifyListeners();
     _box?.put('state', jsonEncode(toJson()));
+    if (sync != null && !_applyingRemote) sync!.onLocalSave();
   }
 
   void saveSettings() {
@@ -175,12 +191,17 @@ class AppState extends ChangeNotifier {
 
   String putImage(String b64) {
     final id = newId();
+    _storeImage(id, b64);
+    sync?.onImagePut(id, b64);
+    return id;
+  }
+
+  void _storeImage(String id, String b64) {
     if (_images != null) {
       _images!.put(id, b64);
     } else {
       _memImages[id] = b64;
     }
-    return id;
   }
 
   String? image(String? id) => id == null ? null : (_images?.get(id) ?? _memImages[id]);
@@ -189,7 +210,115 @@ class AppState extends ChangeNotifier {
     if (id == null) return;
     _images?.delete(id);
     _memImages.remove(id);
+    sync?.onImageRemoved(id);
   }
+
+  // ---------- 家庭同步(cloud/family_sync.dart 调用) ----------
+
+  /// 每条记录一份 JSON。语言、筛选、设置不同步(每台设备自己的)。[t] 先给列表里的位置,同步层会换成真正的排序键。
+  Map<String, SyncRecord> syncRecords() {
+    final out = <String, SyncRecord>{};
+    void add(String kind, List<dynamic> list, String Function(dynamic) idOf, Map<String, dynamic> Function(dynamic) toJson) {
+      for (var i = 0; i < list.length; i++) {
+        final r = SyncRecord(kind: kind, id: idOf(list[i]), json: jsonEncode(toJson(list[i])), t: i);
+        out[r.docId] = r;
+      }
+    }
+
+    add('child', children, (e) => e.id, (e) => e.toJson());
+    add('member', members, (e) => e.id, (e) => e.toJson());
+    add('notice', notices, (e) => e.id, (e) => e.toJson());
+    add('event', events, (e) => e.id, (e) => e.toJson());
+    add('task', tasks, (e) => e.id, (e) => e.toJson());
+    add('grade', grades, (e) => e.id, (e) => e.toJson());
+    add('log', logs, (e) => e.id, (e) => e.toJson());
+    add('reply', replies, (e) => e.id, (e) => e.toJson());
+    return out;
+  }
+
+  /// 用同步合并后的结果整体替换本机数据(不回推)。解析失败的单条跳过,不影响其余。
+  void applySyncRecords(Iterable<SyncRecord> records) {
+    final byKind = <String, List<SyncRecord>>{};
+    for (final r in records) {
+      byKind.putIfAbsent(r.kind, () => []).add(r);
+    }
+    List<T> decode<T>(String kind, T Function(Map<String, dynamic>) f) {
+      final rs = [...?byKind[kind]]..sort((a, b) => a.t != b.t ? a.t.compareTo(b.t) : a.id.compareTo(b.id));
+      final out = <T>[];
+      for (final r in rs) {
+        try {
+          out.add(f(Map<String, dynamic>.from(jsonDecode(r.json) as Map)));
+        } catch (e) {
+          debugPrint('sync: skip bad ${r.docId}: $e');
+        }
+      }
+      return out;
+    }
+
+    children = decode('child', Child.fromJson);
+    members = decode('member', Member.fromJson);
+    notices = decode('notice', Notice.fromJson)..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
+    events = decode('event', Event.fromJson);
+    tasks = decode('task', Task.fromJson);
+    grades = decode('grade', Grade.fromJson);
+    logs = decode('log', StudyLog.fromJson);
+    replies = decode('reply', ReplyRecord.fromJson)..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (filterChildId.isNotEmpty && child(filterChildId) == null) filterChildId = '';
+    _applyingRemote = true;
+    try {
+      _save();
+    } finally {
+      _applyingRemote = false;
+    }
+  }
+
+  /// 云端来的图片:只存本机,不回推
+  void cacheImage(String id, String b64) {
+    if (image(id) == b64) return;
+    _storeImage(id, b64);
+    notifyListeners();
+  }
+
+  void dropImage(String id) {
+    _images?.delete(id);
+    _memImages.remove(id);
+    notifyListeners();
+  }
+
+  /// 记录里引用到的全部图片 id
+  Set<String> referencedImageIds() => {
+        for (final n in notices) ...n.imageIds,
+        for (final t in tasks)
+          if (t.imageId != null) t.imageId!,
+      };
+
+  /// 上次同步时双方一致的样子(三方合并的 base),存在本机,重启后接着用
+  Map<String, SyncRecord> loadSyncBase(String familyId) {
+    final raw = _box?.get('sync_base_$familyId') ?? _memSyncBase[familyId];
+    if (raw == null) return {};
+    try {
+      final m = jsonDecode(raw) as Map<String, dynamic>;
+      return {for (final e in m.entries) e.key: SyncRecord.fromJson(Map<String, dynamic>.from(e.value as Map))};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  void saveSyncBase(String familyId, Map<String, SyncRecord> base) {
+    final raw = jsonEncode({for (final e in base.entries) e.key: e.value.toJson()});
+    if (_box != null) {
+      _box!.put('sync_base_$familyId', raw);
+    } else {
+      _memSyncBase[familyId] = raw;
+    }
+  }
+
+  void clearSyncBase(String familyId) {
+    _box?.delete('sync_base_$familyId');
+    _memSyncBase.remove(familyId);
+  }
+
+  final Map<String, String> _memSyncBase = {};
 
   // ---------- 通用 ----------
   void setLanguage(String l) {

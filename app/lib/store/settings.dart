@@ -12,6 +12,8 @@ class Settings {
   String replySignature;
   /// 第 3 封回信后的反馈卡已经处理过(发送或关掉),不再自动出现;回信记录页里还能手动打开
   bool replyFeedbackHandled;
+  /// 这台设备正在和哪个家庭同步(空 = 只在本机)。启动时据此自动接上同步
+  String cloudFamilyId;
   /// OCR 语言:auto(跟界面语言) / eng / chi
   String ocrLang;
   bool remindersEnabled;
@@ -26,6 +28,7 @@ class Settings {
     this.aiReplyConsent = false,
     this.replySignature = '',
     this.replyFeedbackHandled = false,
+    this.cloudFamilyId = '',
     this.ocrLang = 'auto',
     this.remindersEnabled = true,
     this.briefEnabled = true,
@@ -34,7 +37,7 @@ class Settings {
   });
 
   /// 显示用版本号;发版时与 pubspec.yaml 同步改
-  static const appVersion = '0.3.0';
+  static const appVersion = '0.4.0';
 
   static const defaultModel = 'claude-opus-5-5';
   static const models = <(String, String)>[
@@ -52,6 +55,7 @@ class Settings {
         'aiReplyConsent': aiReplyConsent,
         'replySignature': replySignature,
         'replyFeedbackHandled': replyFeedbackHandled,
+        'cloudFamilyId': cloudFamilyId,
         'ocrLang': ocrLang,
         'remindersEnabled': remindersEnabled,
         'briefEnabled': briefEnabled,
@@ -66,6 +70,7 @@ class Settings {
         aiReplyConsent: j['aiReplyConsent'] ?? false,
         replySignature: j['replySignature'] ?? '',
         replyFeedbackHandled: j['replyFeedbackHandled'] ?? false,
+        cloudFamilyId: j['cloudFamilyId'] ?? '',
         ocrLang: j['ocrLang'] ?? 'auto',
         remindersEnabled: j['remindersEnabled'] ?? true,
         briefEnabled: j['briefEnabled'] ?? true,

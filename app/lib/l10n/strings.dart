@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../cloud/account.dart';
 import '../core/money.dart';
 import '../models/models.dart';
 import '../store/app_state.dart';
@@ -182,7 +183,7 @@ class S {
   String get clearAll => t('清空全部数据', 'Clear all data');
   String get clearConfirm => t('会删除本机全部数据,不可恢复。确定?', 'This deletes all local data. Continue?');
   String get about => t('关于', 'About');
-  String get privacy => t('数据只存在你的设备里,不上传。', 'Data stays on your device. Nothing is uploaded.');
+  String get privacy => t('默认数据只存在你的设备里,不上传;开启「家庭同步」后存到 Google Firebase,只有你的家人能看到。', 'By default your data stays on this device and nothing is uploaded; with Family sync on, it is stored in Google Firebase and only your family can see it.');
   String get name => t('姓名', 'Name');
   String get school => t('学校', 'School');
   String get gradeClass => t('年级/班级', 'Grade / class');
@@ -196,6 +197,83 @@ class S {
       '把学校通知变成家庭日程、待签字的单子、要交的钱;顺手记下测验成绩和每天的学习。\n\n先看演示数据,还是直接添加你的孩子?',
       'Turn school notices into family events, forms to sign and fees to pay; log test scores and daily study.\n\nStart with demo data, or add your child now?');
   String get startFresh => t('添加我的孩子', 'Add my child');
+  String get welcomeJoin => t('我有家人的邀请', 'I was invited by family');
+
+  // 家庭同步(Firebase):爸爸妈妈用各自的账号看到、修改同一份数据,权限相同
+  String get famTitle => t('家庭同步', 'Family sync');
+  String get famCardSub => t('爸爸妈妈各用自己的账号,看到、修改同一份数据', 'Each parent signs in and sees and edits the same data');
+  String get famCardSubOn => t('已开启 · 和家人实时同步', 'On · syncing with your family');
+  String get famNotConfigured => t('家庭同步还没开通(开发者还没接上云端服务)。现在的数据只存在这台设备上。', 'Family sync isn’t switched on yet (the cloud service hasn’t been connected). Your data stays on this device.');
+  String get famIntro => t(
+      '开启后,孩子、通知、日程、待办、成绩、学习记录和照片会存到 Google Firebase,只有你邀请进家庭的人能看到;家庭成员权限完全相同,谁邀请谁都一样。不开启就和现在一样,数据只在这台设备上。Claude API key、提醒设置、界面语言每台设备各自保留,不同步。',
+      'When on, children, notices, events, to-dos, grades, study logs and photos are stored in Google Firebase and only people you invite into your family can see them. Every family member has the same rights, no matter who invited whom. When off, everything stays on this device as before. Your Claude API key, reminder settings and language stay per device.');
+  String get famEmail => t('邮箱', 'Email');
+  String get famPassword => t('密码(至少 6 位)', 'Password (6+ characters)');
+  String get famSignIn => t('登录', 'Sign in');
+  String get famSignUp => t('注册', 'Create account');
+  String get famForgot => t('忘记密码', 'Forgot password');
+  String get famResetSent => t('重设密码的邮件已发出,去邮箱看看', 'Password reset email sent — check your inbox');
+  String get famVerifyTitle => t('验证你的邮箱', 'Verify your email');
+  String famVerifyBody(String e) => t('验证邮件已发到 $e。点邮件里的链接,再回来点「我已验证」。没收到的话看看垃圾邮件。', 'We sent a verification email to $e. Tap the link in it, then come back and tap “I’ve verified”. Check spam if you don’t see it.');
+  String get famIVerified => t('我已验证', 'I’ve verified');
+  String get famResend => t('重发验证邮件', 'Resend email');
+  String get famVerifySent => t('已重发', 'Sent again');
+  String get famNotVerifiedYet => t('还没验证成功,点邮件里的链接后再试', 'Not verified yet — tap the link in the email, then try again');
+  String famSignedInAs(String e) => t('已登录:$e', 'Signed in as $e');
+  String get famNoFamily => t('还没有加入家庭', 'Not in a family yet');
+  String get famCreate => t('创建我的家庭', 'Create my family');
+  String get famCreateDesc => t('这台设备上现有的数据会成为家庭的第一份数据,然后你可以用邮箱邀请家人。', 'The data on this device becomes your family’s data. Then invite family members by email.');
+  String get famInvites => t('收到的邀请', 'Invitations');
+  String famInviteFrom(String who) => t('$who 邀请你加入家庭', '$who invited you to their family');
+  String get famJoin => t('加入', 'Join');
+  String get famRefresh => t('刷新', 'Refresh');
+  String get famNoInvites => t('还没收到邀请。让家人在他的学校通里用你这个邮箱邀请你,然后点刷新。', 'No invitations yet. Ask your family member to invite this email from their SchoolSift, then tap Refresh.');
+  String get famLocalTitle => t('这台设备上已经有数据', 'This device already has data');
+  String get famLocalBody => t('合并:这台设备上的孩子、通知、待办等也并进家庭,两边都保留。\n只用家庭的:这台设备上的数据换成家庭的(这台设备原来的会被替换)。', 'Merge: children, notices, to-dos on this device are added to the family; both are kept.\nUse family data: this device switches to the family’s data (what’s here now is replaced).');
+  String get famMerge => t('合并进家庭', 'Merge');
+  String get famUseFamily => t('只用家庭的', 'Use family data');
+  String get famMembers => t('家庭成员(权限相同)', 'Family members (equal rights)');
+  String get famMe => t('我', 'me');
+  String get famPending => t('等待接受的邀请', 'Pending invitations');
+  String get famInviteHint => t('家人的邮箱', 'Family member’s email');
+  String get famInviteBtn => t('邀请', 'Invite');
+  String get famBadEmail => t('邮箱格式不对', 'That email doesn’t look right');
+  String get famAlreadyIn => t('这个邮箱已经在家庭里或已邀请过', 'That email is already in the family or invited');
+  String famInvitedTitle(String e) => t('已邀请 $e', 'Invited $e');
+  String get famInvitedBody => t('对方用这个邮箱注册并验证后,在「更多 → 家庭同步」里就能看到邀请。现在把邀请发给他:', 'Once they sign up with this email and verify it, they’ll see the invitation under More → Family sync. Send them the invitation now:');
+  String get famSendEmail => t('用邮件发送', 'Send by email');
+  String get famShareInvite => t('分享 / 复制', 'Share / copy');
+  String get famInviteSubject => t('邀请你一起用「学校通」管理孩子的学校事务', 'Join our family on SchoolSift');
+  String famInviteMessage(String e) => t(
+      '我在用「学校通」管理孩子的学校通知、日程和待办,邀请你加入我们家的共享账号,我们俩看到、修改的是同一份数据:\n1. 打开 https://firedragonai.github.io/school-sift/ (Android 版:https://github.com/FiredragonAI/school-sift/releases)\n2. 更多 → 家庭同步,用 $e 注册并验证邮箱\n3. 点「加入」',
+      'I’m using SchoolSift to keep track of the kids’ school notices, events and to-dos. Join our family so we both see and edit the same data:\n1. Open https://firedragonai.github.io/school-sift/ (Android: https://github.com/FiredragonAI/school-sift/releases)\n2. More → Family sync, sign up with $e and verify the email\n3. Tap “Join”');
+  String get famCancelInvite => t('撤回邀请', 'Cancel invitation');
+  String get famLeave => t('退出家庭', 'Leave family');
+  String get famLeaveConfirm => t('退出后这台设备留一份现在的数据,之后不再同步;家庭里的其他人不受影响。确定?', 'This device keeps a copy of the current data but stops syncing; others in the family are not affected. Leave?');
+  String get famSignOut => t('退出登录', 'Sign out');
+  String get famSignOutConfirm => t('退出登录后这台设备留一份现在的数据,之后不再同步。再登录就能接着同步。确定?', 'This device keeps a copy of the current data but stops syncing until you sign in again. Sign out?');
+  String get famDelete => t('删除账号', 'Delete account');
+  String get famDeleteBody => t(
+      '会永久删除你的登录账号。你是家庭里唯一的成员时,云端的家庭数据(孩子、通知、日程、照片……)会一起删除;还有其他成员时,数据留给他们,只把你移出。这台设备上的数据不受影响。\n\n输入密码确认:',
+      'This permanently deletes your account. If you are the only member of your family, the family’s cloud data (children, notices, events, photos…) is deleted too; if others remain, the data stays with them and only you are removed. Data on this device is not affected.\n\nEnter your password to confirm:');
+  String get famDeleteBtn => t('永久删除', 'Delete permanently');
+  String get famDeleted => t('账号已删除', 'Account deleted');
+  String get famSynced => t('已同步', 'Synced');
+  String get famPendingWrites => t('正在上传…', 'Uploading…');
+  String get famOffline => t('离线 · 恢复网络后自动同步', 'Offline · will sync when you’re back online');
+  String get famConnecting => t('正在连接…', 'Connecting…');
+  String get famError => t('同步出错', 'Sync error');
+  String get famSyncedLocked => t('已开启家庭同步:要载入演示数据或清空数据,请先在「家庭同步」里退出家庭(否则会改到全家的数据)。', 'Family sync is on: to load demo data or clear everything, leave the family first (otherwise it changes everyone’s data).');
+  String get famRestoreWarn => t('已开启家庭同步:恢复备份会覆盖全家共享的数据。确定?', 'Family sync is on: restoring a backup overwrites your whole family’s data. Continue?');
+  String famAccountError(AccountError e) => switch (e) {
+        AccountError.emailInUse => t('这个邮箱已经注册过,直接登录', 'This email already has an account — sign in instead'),
+        AccountError.invalidEmail => t('邮箱格式不对', 'That email doesn’t look right'),
+        AccountError.weakPassword => t('密码太简单,至少 6 位', 'Password too weak — use 6+ characters'),
+        AccountError.wrongCredentials => t('邮箱或密码不对', 'Wrong email or password'),
+        AccountError.tooManyRequests => t('尝试次数太多,过一会儿再试', 'Too many attempts — try again later'),
+        AccountError.network => t('网络连不上', 'Can’t reach the network'),
+        AccountError.unknown => t('出错了,请再试一次', 'Something went wrong — please try again'),
+      };
 
   // 通知录入:附件 / OCR / AI
   String get attachments => t('附件', 'Attachments');

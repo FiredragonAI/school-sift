@@ -1,4 +1,4 @@
-// 更多:设置、用英文写信、孩子、家庭成员、语言、备份、演示数据、关于。
+// 更多:家庭同步、设置、用英文写信、孩子、家庭成员、语言、备份、演示数据、关于。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +8,7 @@ import '../l10n/strings.dart';
 import '../platform/export.dart';
 import '../store/app_state.dart';
 import '../store/settings.dart';
+import 'family_screen.dart';
 import 'reply_screen.dart';
 import 'settings_screen.dart';
 import 'widgets.dart';
@@ -22,6 +23,17 @@ class MoreScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(s.tabMore)),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 32), children: [
+        const SizedBox(height: 8),
+        Card(
+          color: st.synced ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5) : null,
+          child: ListTile(
+            leading: Icon(st.synced ? Icons.cloud_done_outlined : Icons.family_restroom),
+            title: Text(s.famTitle),
+            subtitle: Text(st.synced ? s.famCardSubOn : s.famCardSub, maxLines: 2, overflow: TextOverflow.ellipsis),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => openFamilyScreen(context),
+          ),
+        ),
         const SizedBox(height: 8),
         Card(
           child: ListTile(
@@ -104,7 +116,10 @@ class MoreScreen extends StatelessWidget {
             ListTile(
               leading: const Icon(Icons.upload_outlined),
               title: Text(s.importJson),
-              onTap: () => _importDialog(context),
+              onTap: () async {
+                if (st.synced && !await confirmDialog(context, s.famRestoreWarn)) return;
+                if (context.mounted) _importDialog(context);
+              },
             ),
             const Divider(height: 1),
             ListTile(
@@ -124,14 +139,19 @@ class MoreScreen extends StatelessWidget {
         const SizedBox(height: 12),
         Card(
           child: Column(children: [
-            ListTile(leading: const Icon(Icons.science_outlined), title: Text(s.loadDemo), onTap: () => st.loadDemo()),
-            ListTile(
-              leading: Icon(Icons.delete_forever_outlined, color: Theme.of(context).colorScheme.error),
-              title: Text(s.clearAll, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-              onTap: () async {
-                if (await confirmDialog(context, s.clearConfirm)) st.clearAll();
-              },
-            ),
+            // 开着家庭同步时这两项会改到全家的数据,先退出家庭再用
+            if (st.synced)
+              ListTile(leading: const Icon(Icons.lock_outline), title: Text(s.famSyncedLocked, style: Theme.of(context).textTheme.bodySmall))
+            else ...[
+              ListTile(leading: const Icon(Icons.science_outlined), title: Text(s.loadDemo), onTap: () => st.loadDemo()),
+              ListTile(
+                leading: Icon(Icons.delete_forever_outlined, color: Theme.of(context).colorScheme.error),
+                title: Text(s.clearAll, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                onTap: () async {
+                  if (await confirmDialog(context, s.clearConfirm)) st.clearAll();
+                },
+              ),
+            ],
           ]),
         ),
         SectionTitle(s.about),
