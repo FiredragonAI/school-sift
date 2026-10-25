@@ -1,0 +1,13 @@
+{
+  "name": "school-sift-store-assets",
+  "private": true,
+  "type": "module",
+  "description": "重拍 Google Play 商店截图和置顶大图,输出到 app/android/fastlane/metadata/android/",
+  "scripts": {
+    "shots": "node shots.mjs",
+    "feature": "node feature.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.43.1"
+  }
+}

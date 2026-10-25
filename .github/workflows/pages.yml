@@ -55,7 +55,7 @@ jobs:
           --dart-define="FEEDBACK_FORM_URL=$FEEDBACK_FORM_URL"
 
       - name: Bundle privacy policy alongside the app
-        run: cp ../docs/privacy-policy.html build/web/
+        run: cp ../docs/privacy-policy.html ../docs/delete-account.html build/web/
 
       - uses: actions/upload-pages-artifact@v3
         with:

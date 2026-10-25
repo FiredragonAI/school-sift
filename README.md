@@ -78,6 +78,7 @@ flutter build apk --release --split-per-abi   # 需要 android/key.properties,�
 - 家庭同步:代码在 `app/lib/cloud/`(`cloud_session.dart` 总控、`family_sync.dart` 同步、`sync_merge.dart` 三方合并、`family_service.dart` 家庭与邀请)。正式 Firebase 项目是 `schoolsift-family`(Firestore 在 us-west2,邮箱/密码登录,授权域名含 firedragonai.github.io),配置在 `lib/cloud/firebase_options.dart`;改了规则后 `cd firebase && npx.cmd firebase deploy --only firestore:rules`(PowerShell 里用 npx.cmd)。本机联调:`firebase emulators:start --only auth,firestore --project demo-schoolsift`(要 JDK 21),Flutter 构建加 `--dart-define=FIREBASE_EMULATOR=true`。规则测试:`cd firebase && npm test`。
 - 部署:推 `main` 后 `.github/workflows/pages.yml` 自动跑 analyze + test + build 并发布到 GitHub Pages。构建带 `--no-web-resources-cdn`(CanvasKit 与 Roboto 自托管,启动不连 gstatic)。
 - 反馈表单:在仓库 Settings → Secrets and variables → Actions → **Variables** 里加 `FEEDBACK_FORM_URL`(如 Tally / Google 表单地址),可用占位符 `{rating}` `{count}` `{keyboard}` `{lang}` 预填;本地构建用 `--dart-define=FEEDBACK_FORM_URL=...`。不设就只有「复制反馈」。改了变量要重跑一次 Pages 工作流才生效。Windows 上 `flutter` 是 .bat,地址里的 `&` 会被 cmd 截断,本地打包要绕过 .bat 直接调 `flutter_tools.snapshot`(Git Bash 里加 `MSYS_NO_PATHCONV=1`)。
+- Google Play:`play-release.cmd internal` 一条命令测试、构建、校验并上传内部测试;`play-release.cmd production` 把内部测试版本提升为正式版草稿(两次确认)。fastlane 配置在 `app/android/fastlane/`,首次配置、标准流程和常见错误见 [docs/PLAY_RELEASE.md](docs/PLAY_RELEASE.md),商店资料与问卷草稿见 [docs/PLAY_LISTING.md](docs/PLAY_LISTING.md)。
 
 ## 路线图
 

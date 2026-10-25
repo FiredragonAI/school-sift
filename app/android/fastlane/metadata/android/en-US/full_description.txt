@@ -1,0 +1,37 @@
+Teachers, the school office and class chats send a steady stream of notices. Which day is the field trip? Which form needs a signature? Which fee is due? SchoolSift reads the notices, hands out the to-dos, and keeps track until they're done.
+
+NOTICES → CALENDAR AND TO-DOS
+• Paste text, or take a photo, pick an image or screenshot, or import a PDF
+• On-device text recognition (Google ML Kit) — images never leave your phone
+• Finds events, permission slips, fees, things to bring and deadlines, each with a confidence level and the source sentence; you review, then add them in one tap
+• Spots "rescheduled / cancelled" and updates the earlier event
+• Keeps the original notice, fully searchable, filterable by child
+• Optional: add your own Claude API key to let AI read text, images and PDFs (sent only when you tap the button, one notice at a time)
+
+CALENDAR AND TO-DOS
+• Month view plus the next 30 days, color-coded by child, assigned to Mom or Dad
+• Forms move from "to sign" → "signed" → "returned"
+• Export .ics or add to Google Calendar in one tap; share today's summary or an event with family
+
+REMINDERS
+• 7 pm the day before a deadline and 8 am on the day; daily nudges for up to 7 days when overdue
+• The day before and 1 hour before events; a morning summary
+
+PROGRESS
+• Test scores by subject with trend lines and class averages
+• Daily study log: homework, reading minutes, focus, teacher feedback, streaks
+• Paper trail: photograph paper forms and track them until they're returned
+
+REPLY IN ENGLISH
+Jot your points in Chinese, choose who you're writing to and the tone, and get a polished English email or text with a Chinese back-translation so you can check the meaning. Requires your own Claude API key.
+
+FAMILY SYNC (OPTIONAL)
+Sign up with email, create a family and invite family members by email. Each parent signs in with their own account and sees and edits the same data in real time. All members have the same rights. Leave the family any time, or delete your account inside the app.
+
+YOUR DATA STAYS YOURS
+• Without family sync, everything stays on your phone — no sign-up needed
+• No ads, no analytics SDK
+• Export a JSON backup (with photos) and CSV files any time
+• Chinese and English interface
+
+Privacy policy: https://firedragonai.github.io/school-sift/privacy-policy.html

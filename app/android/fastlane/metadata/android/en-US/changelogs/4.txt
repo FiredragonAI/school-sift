@@ -1,0 +1,6 @@
+First Google Play release of SchoolSift:
+• Photo / paste / PDF notices → events, forms, fees and things to bring
+• Calendar, to-dos and deadline reminders
+• Test scores, study log and paper trail
+• Reply to teachers in English (requires your own Claude API key)
+• Optional family sync: invite family by email, equal rights

@@ -1,0 +1,4 @@
+# Google Play 服务账号 JSON 密钥:放在仓库外,默认 ~/.secrets/school-sift/play-service-account.json,
+# 也可以用环境变量 SUPPLY_JSON_KEY 指到别处。密钥绝不进 git。
+json_key_file(ENV["SUPPLY_JSON_KEY"] || File.join(Dir.home, ".secrets", "school-sift", "play-service-account.json"))
+package_name("io.cspeed.school_sift")

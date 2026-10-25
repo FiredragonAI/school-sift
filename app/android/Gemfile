@@ -1,0 +1,4 @@
+# Google Play 发布用的 fastlane(见 docs/PLAY_RELEASE.md)。装依赖:cd app/android && bundle install
+source "https://rubygems.org"
+
+gem "fastlane", "~> 2.228"

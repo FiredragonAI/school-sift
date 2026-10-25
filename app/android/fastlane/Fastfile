@@ -1,0 +1,534 @@
+# 学校通 · SchoolSift 的 Google Play 发布流水线。完整说明见 docs/PLAY_RELEASE.md。
+#
+#   play-release.cmd check        只检查:工具、签名密钥、Play 连接、商店文字长度。不构建、不上传
+#   play-release.cmd internal     测试 → 自动加 versionCode → 构建 AAB → 校验签名/版本 → 上传「内部测试」
+#   play-release.cmd production   把内部测试里已有的某个版本提升到正式版,只建「草稿」,要两次人工确认
+#   play-release.cmd metadata     上传商店文字、图标、截图(要确认;不碰安装包)
+#
+# 安全约束(写死在代码里,不靠参数):
+#   - internal 只会上传到 internal 轨道;
+#   - production 只做「提升 + 草稿」,不上传新包、不自动发布、不送审,非交互终端直接拒绝;
+#   - 不删除、不停用任何已有发布(提升时 deactivate_on_promote: false)。
+#
+# 每次运行的日志在 app/build/release-logs/<时间>/:每一步一个 .log,结果 summary.json,出错时 error.txt。
+
+require "open3"
+require "json"
+require "time"
+require "fileutils"
+require "zip"
+
+default_platform(:android)
+
+PACKAGE = "io.cspeed.school_sift"
+# 上传密钥(~/school-sift-upload-keystore.jks)的证书 SHA-1。签出来的 AAB 不是这个就拒绝上传,
+# 防止 key.properties 丢了以后 Gradle 悄悄回退成 debug 签名。
+UPLOAD_CERT_SHA1 = "9F:80:5F:BD:A5:E1:27:C0:70:65:46:DD:04:D5:A3:F2:60:AC:7A:D4"
+MIN_TARGET_SDK = 35 # Google Play 对新应用和更新的 targetSdk 下限
+TRACKS = %w[internal alpha beta production].freeze
+BUNDLETOOL_VERSION = "1.18.3"
+
+FASTLANE_DIR = File.expand_path(FastlaneCore::FastlaneFolder.path)
+ANDROID_DIR = File.expand_path("..", FASTLANE_DIR)
+APP_DIR = File.expand_path("..", ANDROID_DIR)
+REPO_DIR = File.expand_path("..", APP_DIR)
+PUBSPEC = File.join(APP_DIR, "pubspec.yaml")
+SETTINGS_DART = File.join(APP_DIR, "lib", "store", "settings.dart")
+METADATA_DIR = File.join(FASTLANE_DIR, "metadata", "android")
+AAB_PATH = File.join(APP_DIR, "build", "app", "outputs", "bundle", "release", "app-release.aab")
+MAPPING_PATH = File.join(APP_DIR, "build", "app", "outputs", "mapping", "release", "mapping.txt")
+LOG_DIR = File.join(APP_DIR, "build", "release-logs", Time.now.strftime("%Y%m%d-%H%M%S"))
+CONSOLE_URL = "https://play.google.com/console"
+
+# ---------------------------------------------------------------------------------------------
+# 小工具
+
+def json_key_path
+  ENV["SUPPLY_JSON_KEY"] || File.join(Dir.home, ".secrets", "school-sift", "play-service-account.json")
+end
+
+def summary
+  @summary ||= { "package" => PACKAGE, "started_at" => Time.now.iso8601, "log_dir" => LOG_DIR }
+end
+
+def write_summary
+  FileUtils.mkdir_p(LOG_DIR)
+  File.write(File.join(LOG_DIR, "summary.json"), JSON.pretty_generate(summary))
+end
+
+def flutter_root
+  @flutter_root ||= begin
+    root = ENV["FLUTTER_ROOT"].to_s
+    if root.empty?
+      name = Gem.win_platform? ? "flutter.bat" : "flutter"
+      exe = ENV["PATH"].split(File::PATH_SEPARATOR).map { |d| File.join(d, name) }.find { |f| File.file?(f) }
+      UI.user_error!("找不到 flutter:把 Flutter 的 bin 目录加进 PATH,或设置 FLUTTER_ROOT") unless exe
+      root = File.expand_path("..", File.dirname(exe))
+    end
+    root
+  end
+end
+
+# Windows 上 flutter.bat 会经 cmd 再解析一遍参数,FEEDBACK_FORM_URL 里的 & 会把命令截断,
+# 所以直接调 Flutter 工具本体(flutter.bat 做的也是这件事)。
+def flutter(*args)
+  return [File.join(flutter_root, "bin", "flutter"), *args] unless Gem.win_platform?
+
+  [
+    File.join(flutter_root, "bin", "cache", "dart-sdk", "bin", "dart.exe"),
+    "--packages=#{File.join(flutter_root, 'packages', 'flutter_tools', '.dart_tool', 'package_config.json')}",
+    File.join(flutter_root, "bin", "cache", "flutter_tools.snapshot"),
+    *args,
+  ]
+end
+
+def flutter_env
+  { "FLUTTER_ROOT" => flutter_root }
+end
+
+# 跑一个外部命令:输出同时打到屏幕和 LOG_DIR/NN-name.log;失败时给出最后 40 行和可能原因。
+def run_step(name, argv, chdir: APP_DIR, env: {}, quiet: false)
+  @step = (@step || 0) + 1
+  FileUtils.mkdir_p(LOG_DIR)
+  log = File.join(LOG_DIR, format("%02d-%s.log", @step, name))
+  UI.message("▶ #{name}(日志 #{log})")
+  out = +""
+  status = nil
+  File.open(log, "wb") do |f|
+    f.puts("$ #{argv.join(' ')}", "(cwd #{chdir})", "")
+    Open3.popen2e(env, *argv, chdir: chdir) do |_stdin, io, thr|
+      io.each_line do |raw|
+        line = raw.dup.force_encoding("UTF-8").scrub
+        f.write(line)
+        out << line
+        puts("    #{line}") unless quiet
+      end
+      status = thr.value
+    end
+  end
+  unless status.success?
+    UI.error(out.lines.last(40).join)
+    if (hint = diagnose(out))
+      UI.important("可能原因:#{hint}")
+    end
+    UI.user_error!("「#{name}」失败(退出码 #{status.exitstatus})。完整日志:#{log}")
+  end
+  out
+end
+
+# 常见错误 → 中文提示(也用在 Play API 的异常信息上)。处理方法详见 docs/PLAY_RELEASE.md「常见错误」。
+DIAGNOSES = [
+  [/Package not found|applicationNotFound|No application was found/i,
+   "Play Console 里还没有这个应用,或还没手动上传过第一个版本。首次上架必须在 Play Console 建应用并手动上传第一个 AAB(见 PLAY_RELEASE.md 第 4 步)"],
+  [/caller does not have permission|insufficientPermissions|permissionDenied|403/i,
+   "服务账号没有这个应用的权限:Play Console → 用户和权限 → 邀请 play-publisher@schoolsift-family.iam.gserviceaccount.com 并勾选本应用的发布权限;刚授权的要等几分钟"],
+  [/Google Play Android Developer API has not been used|androidpublisher.*disabled/i,
+   "Google Cloud 项目 schoolsift-family 里没开 Google Play Android Developer API"],
+  [/invalid_grant|Invalid JWT|account not found/i,
+   "JSON 密钥失效(被删了/服务账号被删了)或电脑时间不准:重新生成密钥,或校准系统时间"],
+  [/version code .*already been used|versionCode .*already/i,
+   "这个 versionCode 已经用过了(哪怕那次上传失败或已删除的草稿)。重新运行会自动取 Play 上最大值 + 1;手动指定时换一个更大的"],
+  [/Only releases with status draft may be created on draft app/i,
+   "应用还在「草稿」状态(从未发布过),API 只能建草稿发布:去 Play Console 的内部测试页面手动点「发布」"],
+  [/signed with the wrong key|wrong key|signed in debug mode/i,
+   "签名不对:上传的 AAB 必须用上传密钥签名。检查 app/android/key.properties 和 ~/school-sift-upload-keystore.jks"],
+  [/Keystore was tampered with|password was incorrect|Failed to read key/i,
+   "签名密钥密码不对或密钥文件损坏:检查 app/android/key.properties(或环境变量)里的密码"],
+  [/production.*(not allowed|access)|closed test/i,
+   "个人开发者账号要先完成封闭测试(至少 12 名测试者连续 14 天),并在 Play Console 申请正式版访问权限"],
+  [/16 ?KB|page size/i,
+   "原生库不支持 16 KB 内存页:升级 Flutter / 相关插件到支持 16 KB 的版本"],
+  [/Could not resolve|Connection reset|timed out|SocketException|Failed to connect/i,
+   "网络问题:确认能访问 maven.google.com / pub.dev / androidpublisher.googleapis.com,必要时设置代理后重试"],
+].freeze
+
+def diagnose(text)
+  DIAGNOSES.find { |re, _| text =~ re }&.last
+end
+
+def pubspec_version
+  m = File.binread(PUBSPEC).force_encoding("UTF-8").match(/^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$/)
+  UI.user_error!("pubspec.yaml 的 version 必须是 x.y.z+N 的形式") unless m
+  [m[1], m[2].to_i]
+end
+
+# 用二进制读写,保留 pubspec.yaml 原来的 CRLF 换行
+def write_pubspec_version(name, code)
+  s = File.binread(PUBSPEC).force_encoding("UTF-8")
+  File.binwrite(PUBSPEC, s.sub(/^version:[^\r\n]*/, "version: #{name}+#{code}"))
+end
+
+def git(*args)
+  out, status = Open3.capture2e("git", *args, chdir: REPO_DIR)
+  [out.strip, status.success?]
+end
+
+def key_properties
+  file = File.join(ANDROID_DIR, "key.properties")
+  return nil unless File.file?(file)
+
+  File.readlines(file, chomp: true).each_with_object({}) do |l, h|
+    k, v = l.split("=", 2)
+    h[k.strip] = v.to_s.strip if v && !k.strip.start_with?("#")
+  end
+end
+
+def feedback_form_url
+  ENV["FEEDBACK_FORM_URL"].to_s
+end
+
+# ---------------------------------------------------------------------------------------------
+# 检查
+
+def preflight(need_play: true)
+  UI.header("检查环境与密钥")
+  errors = []
+
+  run_step("flutter-version", [File.join(flutter_root, "bin", Gem.win_platform? ? "flutter.bat" : "flutter"), "--version"])
+  run_step("java-version", ["java", "-version"], quiet: true)
+
+  props = key_properties
+  if props.nil?
+    errors << "缺少 app/android/key.properties(上传密钥配置),没有它 release 会回退成 debug 签名"
+  else
+    store = File.expand_path(props["storeFile"].to_s, File.join(ANDROID_DIR, "app"))
+    errors << "key.properties 里的 storeFile 不存在:#{store}" unless File.file?(store)
+    %w[storePassword keyPassword keyAlias].each { |k| errors << "key.properties 缺 #{k}" if props[k].to_s.empty? }
+    _, ignored = git("check-ignore", "-q", "app/android/key.properties")
+    errors << "app/android/key.properties 没有被 .gitignore 忽略,会被提交!" unless ignored
+  end
+
+  if need_play
+    if File.file?(json_key_path)
+      inside = File.expand_path(json_key_path).downcase.start_with?(REPO_DIR.downcase)
+      if inside
+        _, ignored = git("check-ignore", "-q", File.expand_path(json_key_path))
+        errors << "服务账号 JSON 密钥在仓库里且没被忽略:#{json_key_path}" unless ignored
+      end
+    else
+      errors << "找不到服务账号 JSON 密钥:#{json_key_path}(或设置环境变量 SUPPLY_JSON_KEY)"
+    end
+  end
+
+  name, = pubspec_version
+  dart_version = File.read(SETTINGS_DART)[/appVersion\s*=\s*'([^']+)'/, 1]
+  if dart_version != name
+    errors << "版本名不一致:pubspec.yaml 是 #{name},lib/store/settings.dart 的 appVersion 是 #{dart_version}(「更多」页显示的是后者)"
+  end
+
+  head, = git("rev-parse", "--short", "HEAD")
+  dirty, = git("status", "--porcelain")
+  summary["git_commit"] = head
+  summary["git_dirty"] = !dirty.empty?
+  UI.important("工作区有未提交的改动,这次构建对应的不是一个干净的提交:\n#{dirty}") unless dirty.empty?
+  UI.important("没有设置 FEEDBACK_FORM_URL,这个包里的反馈卡只会「复制反馈」") if feedback_form_url.empty?
+
+  UI.user_error!("检查没通过:\n  - " + errors.join("\n  - ")) unless errors.empty?
+
+  return unless need_play
+
+  validate_play_store_json_key(json_key: json_key_path)
+  UI.success("服务账号密钥有效")
+end
+
+# Play 上这个应用的状态::ok / :not_found(没建或没手动传过第一个版本)/ 抛错
+def play_state
+  @play_state ||= begin
+    google_play_track_version_codes(track: "internal")
+    :ok
+  rescue StandardError => e
+    raise unless e.message =~ /Package not found|applicationNotFound|not found/i
+
+    UI.message("Play 返回:#{e.message.lines.first.to_s.strip}")
+    :not_found
+  end
+end
+
+def play_version_codes
+  TRACKS.flat_map do |t|
+    google_play_track_version_codes(track: t)
+  rescue StandardError => e
+    raise unless e.message =~ /not found|Track .* does not exist|no releases/i
+
+    []
+  end.uniq.sort
+end
+
+def check_metadata
+  limits = { "title.txt" => 30, "short_description.txt" => 80, "full_description.txt" => 4000 }
+  problems = []
+  Dir.glob(File.join(METADATA_DIR, "*")).select { |d| File.directory?(d) }.each do |lang_dir|
+    lang = File.basename(lang_dir)
+    limits.each do |file, max|
+      path = File.join(lang_dir, file)
+      unless File.file?(path)
+        problems << "#{lang}/#{file} 缺失"
+        next
+      end
+      n = File.read(path, encoding: "UTF-8").strip.length
+      problems << "#{lang}/#{file} #{n} 字,超过上限 #{max}" if n > max
+    end
+    Dir.glob(File.join(lang_dir, "changelogs", "*.txt")).each do |c|
+      n = File.read(c, encoding: "UTF-8").strip.length
+      problems << "#{lang}/changelogs/#{File.basename(c)} #{n} 字,超过上限 500" if n > 500
+    end
+  end
+  problems
+end
+
+# ---------------------------------------------------------------------------------------------
+# 构建后校验
+
+def bundletool_jar
+  dir = File.join(Dir.home, ".cache", "school-sift")
+  jar = File.join(dir, "bundletool-all-#{BUNDLETOOL_VERSION}.jar")
+  return jar if File.file?(jar) && File.size(jar) > 10_000_000
+
+  FileUtils.mkdir_p(dir)
+  url = "https://github.com/google/bundletool/releases/download/#{BUNDLETOOL_VERSION}/bundletool-all-#{BUNDLETOOL_VERSION}.jar"
+  run_step("download-bundletool", ["curl", "-fsSL", "-o", jar, url], quiet: true)
+  jar
+end
+
+# 64 位原生库的 LOAD 段对齐至少 16 KB(Android 15+ 设备与 Google Play 的要求)
+def elf_min_load_align(data)
+  return nil unless data.byteslice(0, 4) == "\x7FELF".b && data.getbyte(4) == 2
+
+  phoff = data.byteslice(0x20, 8).unpack1("Q<")
+  phentsize = data.byteslice(0x36, 2).unpack1("S<")
+  phnum = data.byteslice(0x38, 2).unpack1("S<")
+  (0...phnum).filter_map do |i|
+    off = phoff + i * phentsize
+    data.byteslice(off, 4).unpack1("L<") == 1 ? data.byteslice(off + 0x30, 8).unpack1("Q<") : nil
+  end.min
+end
+
+def verify_aab(aab, expect_code, expect_name)
+  UI.header("校验 AAB")
+  UI.user_error!("没找到 AAB:#{aab}") unless File.file?(aab)
+
+  certs = run_step("aab-certificate", ["keytool", "-J-Duser.language=en", "-printcert", "-jarfile", aab], quiet: true)
+  sha1 = certs[/SHA1:\s*([0-9A-F:]+)/, 1]
+  UI.user_error!("AAB 没有签名") unless sha1
+  unless sha1 == UPLOAD_CERT_SHA1
+    UI.user_error!("AAB 的签名证书是 #{sha1},不是上传密钥 #{UPLOAD_CERT_SHA1}。多半是 key.properties 没读到、回退成了 debug 签名")
+  end
+  verify = run_step("aab-jarsigner", ["jarsigner", "-J-Duser.language=en", "-verify", aab], quiet: true)
+  UI.user_error!("jarsigner 校验没通过") unless verify.include?("jar verified")
+
+  manifest = run_step("aab-manifest", ["java", "-jar", bundletool_jar, "dump", "manifest", "--bundle", aab], quiet: true)
+  package = manifest[/package="([^"]+)"/, 1]
+  code = manifest[/android:versionCode="(\d+)"/, 1].to_i
+  name = manifest[/android:versionName="([^"]+)"/, 1]
+  target = manifest[/android:targetSdkVersion="(\d+)"/, 1].to_i
+  min = manifest[/android:minSdkVersion="(\d+)"/, 1].to_i
+  UI.user_error!("包名是 #{package},应为 #{PACKAGE}") unless package == PACKAGE
+  UI.user_error!("versionCode 是 #{code},应为 #{expect_code}") unless code == expect_code
+  UI.user_error!("versionName 是 #{name},应为 #{expect_name}") unless name == expect_name
+  UI.user_error!("targetSdk #{target} 低于 Google Play 要求的 #{MIN_TARGET_SDK}") if target < MIN_TARGET_SDK
+  UI.user_error!("AAB 里声明了可调试(debuggable)") if manifest.include?('android:debuggable="true"')
+
+  bad = []
+  Zip::File.open(aab) do |zip|
+    zip.glob("base/lib/{arm64-v8a,x86_64}/*.so").each do |entry|
+      align = elf_min_load_align(entry.get_input_stream.read)
+      bad << "#{entry.name}(对齐 #{align})" if align && align < 16_384
+    end
+  end
+  UI.user_error!("这些原生库不支持 16 KB 内存页:\n  #{bad.join("\n  ")}") unless bad.empty?
+
+  size_mb = (File.size(aab) / 1024.0 / 1024).round(1)
+  summary.merge!("version_code" => code, "version_name" => name, "target_sdk" => target, "min_sdk" => min,
+                 "signing_sha1" => sha1, "aab" => aab, "aab_mb" => size_mb)
+  UI.success("签名 = 上传密钥,包名 #{package},versionCode #{code},versionName #{name},targetSdk #{target},minSdk #{min},#{size_mb} MB,原生库 16 KB 对齐")
+end
+
+# ---------------------------------------------------------------------------------------------
+
+platform :android do
+  before_all do
+    FileUtils.mkdir_p(LOG_DIR)
+  end
+
+  desc "只检查环境、签名密钥、Play 连接和商店文字,不构建不上传"
+  lane :check do
+    summary["lane"] = "check"
+    preflight
+    state = play_state
+    if state == :ok
+      codes = play_version_codes
+      UI.success("Play 上已有的 versionCode:#{codes.empty? ? '(无)' : codes.join(', ')}")
+    else
+      UI.important("Play Console 里还找不到 #{PACKAGE}:首次上架要先在 Play Console 建应用并手动上传第一个 AAB(见 docs/PLAY_RELEASE.md)")
+    end
+    summary["play_state"] = state.to_s
+    problems = check_metadata
+    problems.empty? ? UI.success("商店文字长度都在上限内") : UI.important("商店资料问题:\n  - #{problems.join("\n  - ")}")
+    write_summary
+  end
+
+  desc "测试 → 自动加 versionCode → 构建并校验 AAB → 上传到内部测试轨道"
+  lane :internal do |options|
+    summary["lane"] = "internal"
+    preflight
+
+    UI.header("自动测试")
+    run_step("pub-get", flutter("pub", "get"), env: flutter_env)
+    run_step("analyze", flutter("analyze"), env: flutter_env)
+    run_step("test", flutter("test"), env: flutter_env)
+
+    UI.header("版本号")
+    name, local_code = pubspec_version
+    name = options[:version_name].to_s unless options[:version_name].to_s.empty?
+    state = play_state
+    play_codes = state == :ok ? play_version_codes : []
+    code = if options[:version_code]
+             options[:version_code].to_i
+           else
+             [(play_codes.max || 0) + 1, local_code].max
+           end
+    if play_codes.include?(code)
+      UI.user_error!("versionCode #{code} 在 Play 上已经用过了(已有:#{play_codes.join(', ')})")
+    end
+    UI.message("Play 上已有 versionCode:#{play_codes.empty? ? '(无)' : play_codes.join(', ')};pubspec 里是 #{local_code}")
+    UI.success("这次用 versionName #{name},versionCode #{code}")
+    write_pubspec_version(name, code) if code != local_code || name != pubspec_version[0]
+
+    UI.header("构建 Release AAB")
+    FileUtils.rm_f(AAB_PATH)
+    build_args = ["build", "appbundle", "--release", "--build-name=#{name}", "--build-number=#{code}"]
+    build_args << "--dart-define=FEEDBACK_FORM_URL=#{feedback_form_url}" unless feedback_form_url.empty?
+    run_step("build-appbundle", flutter(*build_args), env: flutter_env)
+    verify_aab(AAB_PATH, code, name)
+
+    if state == :not_found
+      summary["result"] = "built_only_first_upload_needed"
+      write_summary
+      UI.important(<<~MSG)
+        AAB 已构建并校验通过,但 Play Console 里还没有这个应用(或从没手动传过版本),API 现在不能上传。
+        首次上架请按 docs/PLAY_RELEASE.md 第 4 步:在 Play Console 建应用 → 内部测试 → 新建发布 → 手动上传
+          #{AAB_PATH}
+        之后再用 play-release.cmd internal 就能自动上传了。
+      MSG
+      next
+    end
+
+    UI.header("上传到内部测试(internal)")
+    changelog = Dir.glob(File.join(METADATA_DIR, "*", "changelogs", "{#{code},default}.txt")).any?
+    upload = lambda do |status|
+      upload_to_play_store(
+        track: "internal",
+        release_status: status,
+        aab: AAB_PATH,
+        mapping: File.file?(MAPPING_PATH) ? MAPPING_PATH : nil,
+        version_name: name,
+        metadata_path: METADATA_DIR,
+        skip_upload_apk: true,
+        skip_upload_metadata: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: true,
+        skip_upload_changelogs: !changelog,
+      )
+    end
+    status = "completed"
+    begin
+      upload.call(status)
+    rescue StandardError => e
+      raise unless e.message =~ /Only releases with status draft may be created on draft app/i
+
+      UI.important("应用还没正式发布过,API 只能建草稿:改为上传「草稿」,请到 Play Console 内部测试页面手动点发布")
+      status = "draft"
+      upload.call(status)
+    end
+
+    summary.merge!("result" => "uploaded", "track" => "internal", "release_status" => status,
+                   "console" => "#{CONSOLE_URL} → 学校通 → 测试 → 内部测试")
+    write_summary
+    UI.success(<<~MSG)
+      已上传到内部测试:#{PACKAGE} #{name}(versionCode #{code}),发布状态 #{status}
+      Play Console:#{CONSOLE_URL} → 学校通 → 测试 → 内部测试
+      日志与 summary.json:#{LOG_DIR}
+      pubspec.yaml 的版本号已改为 #{name}+#{code},记得提交。
+    MSG
+  end
+
+  desc "把内部测试里已有的版本提升到正式版(只建草稿,需两次确认,不自动发布)"
+  lane :production do |options|
+    summary["lane"] = "production"
+    UI.user_error!("正式版发布必须在交互终端里运行(需要人工确认),已拒绝") unless UI.interactive?
+    preflight
+    UI.user_error!("Play Console 里还找不到这个应用") unless play_state == :ok
+
+    internal = google_play_track_version_codes(track: "internal")
+    UI.user_error!("内部测试轨道里没有任何版本,先运行 play-release.cmd internal") if internal.empty?
+    code = (options[:version_code] || internal.max).to_i
+    UI.user_error!("内部测试轨道里没有 versionCode #{code}(有:#{internal.join(', ')})") unless internal.include?(code)
+    names = google_play_track_release_names(track: "internal")
+    production = begin
+      google_play_track_version_codes(track: "production")
+    rescue StandardError
+      []
+    end
+
+    UI.header("准备提升到正式版")
+    UI.message("应用:#{PACKAGE}")
+    UI.message("内部测试里的发布:#{names.join(', ')};versionCode #{internal.join(', ')}")
+    UI.message("正式版轨道现有 versionCode:#{production.empty? ? '(无)' : production.join(', ')}")
+    UI.important("将把 versionCode #{code} 复制到正式版轨道,状态为「草稿」:不会自动发布、不会自动送审,内部测试保持不变。")
+    UI.important("之后要你本人在 Play Console 检查发布说明、国家/地区和分阶段比例,再手动点「发布」/「送审」。")
+    UI.user_error!("已取消") unless UI.confirm("确认把 versionCode #{code} 提升到 production(草稿)?")
+    typed = UI.input("请输入 PRODUCTION-#{code} 再次确认:").to_s.strip
+    UI.user_error!("输入不匹配,已取消") unless typed == "PRODUCTION-#{code}"
+
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "production",
+      track_promote_release_status: "draft",
+      version_code: code,
+      deactivate_on_promote: false,
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+    )
+    summary.merge!("result" => "promoted_draft", "track" => "production", "version_code" => code, "release_status" => "draft")
+    write_summary
+    UI.success("已在正式版轨道建好草稿(versionCode #{code})。去 #{CONSOLE_URL} → 学校通 → 正式版 检查后手动发布。")
+  end
+
+  desc "上传商店文字、图标、截图(需确认;不上传安装包)"
+  lane :metadata do
+    summary["lane"] = "metadata"
+    UI.user_error!("需要在交互终端里运行(要人工确认)") unless UI.interactive?
+    preflight
+    UI.user_error!("Play Console 里还找不到这个应用") unless play_state == :ok
+    problems = check_metadata
+    UI.user_error!("商店资料有问题:\n  - #{problems.join("\n  - ")}") unless problems.empty?
+    langs = Dir.glob(File.join(METADATA_DIR, "*")).select { |d| File.directory?(d) }.map { |d| File.basename(d) }
+    UI.important("将覆盖 Play 商店里这些语言的标题、简介、图标、置顶大图和手机截图:#{langs.join(', ')}")
+    UI.user_error!("已取消") unless UI.confirm("确认上传商店资料?")
+    upload_to_play_store(
+      metadata_path: METADATA_DIR,
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_changelogs: true,
+      sync_image_upload: true,
+    )
+    summary["result"] = "metadata_uploaded"
+    write_summary
+    UI.success("商店资料已上传。已发布的应用改资料也要经过 Google 审核。")
+  end
+
+  error do |lane, exception|
+    FileUtils.mkdir_p(LOG_DIR)
+    hint = diagnose(exception.message.to_s)
+    summary.merge!("result" => "failed", "lane" => lane.to_s, "error" => exception.message.to_s, "hint" => hint)
+    write_summary
+    File.write(File.join(LOG_DIR, "error.txt"),
+               "#{exception.class}: #{exception.message}\n\n可能原因:#{hint || '(未识别)'}\n\n#{Array(exception.backtrace).first(30).join("\n")}")
+    UI.error("失败。可能原因:#{hint}") if hint
+    UI.error("日志目录:#{LOG_DIR}")
+  end
+end
