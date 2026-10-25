@@ -1,7 +1,7 @@
 name: school_sift
 description: "学校通 · SchoolSift —— 把学校通知变成家庭日程、签字袋、成绩与学习记录"
 publish_to: 'none'
-version: 0.4.1+5
+version: 0.4.1+6
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
