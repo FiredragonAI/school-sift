@@ -15,3 +15,11 @@ app/android/app/*.jks
 
 # 字体裁剪工具的依赖
 app/tools/fontsubset/node_modules/
+
+# Firebase 规则测试的依赖与模拟器日志
+firebase/node_modules/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+# 接 Firebase 模拟器的网页构建(只在本机联调用)
+app/build/web_emu/

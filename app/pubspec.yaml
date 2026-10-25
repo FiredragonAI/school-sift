@@ -39,11 +39,18 @@ dependencies:
   # 展示
   fl_chart: ^0.69.0
   url_launcher: ^6.3.3              # 原生端用系统浏览器打开链接(Google 日历、反馈表单)
+  firebase_core: ^5.1.0
+  firebase_auth: ^7.0.1
+  cloud_firestore: 7.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  fake_cloud_firestore: ^4.4.0
+  # fake_cloud_firestore 4.4.0 还没跟上 platform_interface 8.1.0 新加的 FieldValue.maximum/minimum,
+  # 编译不过;先钉在 8.0.x(和 cloud_firestore 7.0.0 配套),等它更新再放开
+  cloud_firestore_platform_interface: ">=8.0.0 <8.1.0"
 
 flutter:
   uses-material-design: true

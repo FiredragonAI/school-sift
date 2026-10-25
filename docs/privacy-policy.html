@@ -12,13 +12,13 @@
 </head>
 <body>
 <h1>学校通 · SchoolSift 隐私政策</h1>
-<p>生效日期:2026-10-01;最近更新:2026-10-24(加入「用英文回复」的反馈卡;网页版不再从 Google 加载引擎和字体)</p>
+<p>生效日期:2026-10-01;最近更新:2026-10-25(加入可选的「家庭同步」)</p>
 
 <h2>一句话</h2>
-<p>学校通是一款<strong>本机优先</strong>的家长工具。你输入的孩子信息、学校通知、日程、待办、照片、成绩和学习记录,<strong>只保存在你自己的设备上</strong>(Android 应用的私有存储,或浏览器的本地存储),我们没有服务器接收这些数据,也不会上传、出售或与第三方共享。</p>
+<p>学校通是一款<strong>本机优先</strong>的家长工具。默认情况下,你输入的孩子信息、学校通知、日程、待办、照片、成绩和学习记录<strong>只保存在你自己的设备上</strong>(Android 应用的私有存储,或浏览器的本地存储)。只有你主动开启「家庭同步」,这些数据才会存到云端(Google Firebase),并且只有你邀请进家庭的成员能看到。我们不出售、不用于广告、不与其他第三方共享。</p>
 
 <h2>我们收集什么</h2>
-<p>不收集。应用不要求注册账号,不采集设备标识,不内置任何统计或广告 SDK。</p>
+<p>不开家庭同步时不收集任何数据:不要求注册账号,不采集设备标识,不内置任何统计或广告 SDK。开启家庭同步时的数据处理见下方「家庭同步」。</p>
 
 <h2>照片</h2>
 <p>你拍摄或从相册选择的纸质通知、回执照片,会被缩小后保存在本机数据里,仅用于你自己查看。应用不会在后台访问相机或相册。</p>
@@ -49,12 +49,23 @@
 <h2>提醒</h2>
 <p>Android 版的提醒是本地定时通知,由系统在设备上触发,不涉及任何服务器。网页版只在页面打开时用浏览器通知。</p>
 
+<h2>家庭同步(可选)</h2>
+<p>在「更多 → 家庭同步」里,你可以用邮箱和密码注册,创建一个家庭并用邮箱邀请家人。开启后:</p>
+<ul>
+<li><strong>存什么</strong>:你的邮箱和登录凭证(由 Google Firebase Authentication 保管,我们看不到密码);家庭的孩子资料、通知原文与照片(压缩后)、日程、待办、成绩、学习记录、英文回信记录(存放在 Google Cloud Firestore)。Claude API key、提醒设置、界面语言只留在各自的设备上,不上传。</li>
+<li><strong>谁能看</strong>:只有这个家庭的成员。家庭成员权限相同,都能查看和修改全部数据、邀请或撤回邀请。被邀请的人必须用被邀请的邮箱注册并完成邮箱验证,才能加入。访问控制由服务器端规则强制执行。</li>
+<li><strong>邀请邮件</strong>:学校通没有自己的发信服务器,邀请由你从自己的邮箱或聊天软件发给家人;验证邮件和重设密码邮件由 Firebase 代发。</li>
+<li><strong>第三方</strong>:数据由 Google 作为服务提供方代为存储和处理,适用 <a href="https://firebase.google.com/support/privacy">Firebase 的隐私与安全说明</a>。开启家庭同步后,网页版会从 Google 加载 Firebase 的程序文件。</li>
+<li><strong>退出与删除</strong>:「退出家庭」后这台设备留一份当时的数据,不再同步;「删除账号」会永久删除你的登录账号,如果你是家庭里唯一的成员,云端的家庭数据会一起删除,如果还有其他成员,数据留给他们,只把你移出。设备上的数据可以随时在「更多 → 清空全部数据」删除。</li>
+<li><strong>儿童</strong>:账号只供家长注册使用,孩子不需要也不应该注册账号;孩子的信息由家长录入、由家长决定是否同步。</li>
+</ul>
+
 <h2>联系</h2>
 <p>问题与建议:<a href="https://github.com/FiredragonAI/school-sift/issues">github.com/FiredragonAI/school-sift/issues</a></p>
 
 <div class="en">
 <h2>Privacy Policy (English)</h2>
-<p><strong>SchoolSift is local-first.</strong> Everything you enter — children, school notices, events, tasks, photos, grades and study logs — stays on your own device (the Android app's private storage or your browser's local storage). There is no account, no server, no analytics or advertising SDK, and nothing is uploaded, sold or shared. Photos are downscaled and stored locally only. Exports (.ics, Google Calendar link, JSON backup) are triggered by you and handed to the destination you choose. Deleting the app, or using "More → Clear all data", removes everything. OCR runs on-device (Tesseract.js in the browser, Google ML Kit on Android). <strong>Optional AI features</strong> use <em>your own</em> Anthropic API key and run only when you tap a button, sending directly to api.anthropic.com, never through our servers. "Extract with AI" sends that single notice's text and images — never children's names, grades or other notices. "Reply in English" sends the points you wrote (or your own English draft in light-touch mode), the recipient and tone you picked, and, when you reply to a notice, that notice's text; anything you type into your points, including names, is sent, while your sign-off name is filled in on the device and never sent. Generated replies are kept only on your device (and in backups you export). You are asked for consent the first time you use each feature, and the key is stored only on your device. After your 3rd reply, an optional one-time feedback card may appear; nothing is sent unless you tap it, and tapping only opens a third-party form pre-filled with your three choices and reply count (or copies the text to your clipboard if no form is configured). The web version loads its fonts and rendering engine from this site, not from Google; only on-device OCR downloads Tesseract.js from jsdelivr when you use it. (Last updated 2026-10-24.)</p>
+<p><strong>SchoolSift is local-first.</strong> Everything you enter — children, school notices, events, tasks, photos, grades and study logs — stays on your own device (the Android app's private storage or your browser's local storage). There is no account, no server, no analytics or advertising SDK, and nothing is uploaded, sold or shared. Photos are downscaled and stored locally only. Exports (.ics, Google Calendar link, JSON backup) are triggered by you and handed to the destination you choose. Deleting the app, or using "More → Clear all data", removes everything. OCR runs on-device (Tesseract.js in the browser, Google ML Kit on Android). <strong>Optional AI features</strong> use <em>your own</em> Anthropic API key and run only when you tap a button, sending directly to api.anthropic.com, never through our servers. "Extract with AI" sends that single notice's text and images — never children's names, grades or other notices. "Reply in English" sends the points you wrote (or your own English draft in light-touch mode), the recipient and tone you picked, and, when you reply to a notice, that notice's text; anything you type into your points, including names, is sent, while your sign-off name is filled in on the device and never sent. Generated replies are kept only on your device (and in backups you export). You are asked for consent the first time you use each feature, and the key is stored only on your device. After your 3rd reply, an optional one-time feedback card may appear; nothing is sent unless you tap it, and tapping only opens a third-party form pre-filled with your three choices and reply count (or copies the text to your clipboard if no form is configured). The web version loads its fonts and rendering engine from this site, not from Google; only on-device OCR downloads Tesseract.js from jsdelivr when you use it. <strong>Family sync (optional)</strong>: if you sign up with email and password and create or join a family, your email and sign-in credentials are handled by Google Firebase Authentication, and the family’s children, notices and photos (compressed), events, to-dos, grades, study logs and reply history are stored in Google Cloud Firestore. Only members of your family can read them; all members have the same rights; an invitee must sign up with the invited email and verify it before joining. Your API key, reminder settings and language stay on each device. You can leave the family at any time (the device keeps a copy and stops syncing), or delete your account in the app: if you are the family’s only member, its cloud data is deleted as well; otherwise it stays with the remaining members. Accounts are for parents only. (Last updated 2026-10-25.)</p>
 </div>
 </body>
 </html>

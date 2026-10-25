@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+import 'cloud/cloud_session.dart';
 import 'l10n/strings.dart';
 import 'store/app_state.dart';
 import 'store/reminder_sync.dart';
 import 'ui/calendar_screen.dart';
+import 'ui/family_screen.dart';
 import 'ui/growth_screen.dart';
 import 'ui/inbox_screen.dart';
 import 'ui/more_screen.dart';
@@ -15,17 +17,30 @@ import 'ui/widgets.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
-  state.load().then((_) => ReminderSync.attach(state));
-  runApp(ChangeNotifierProvider.value(value: state, child: const SchoolSiftApp()));
+  final cloud = CloudSession(state);
+  state.load().then((_) {
+    ReminderSync.attach(state);
+    // 这台设备之前开着家庭同步:接着同步(这时才初始化 Firebase)
+    if (state.settings.cloudFamilyId.isNotEmpty) cloud.start();
+  });
+  runApp(ChangeNotifierProvider.value(value: state, child: SchoolSiftApp(cloud: cloud)));
 }
 
-class SchoolSiftApp extends StatelessWidget {
-  const SchoolSiftApp({super.key});
+class SchoolSiftApp extends StatefulWidget {
+  /// 不传时自己建一个(测试里用;没有正式 Firebase 项目时它只会显示「还没开通」)
+  final CloudSession? cloud;
+  const SchoolSiftApp({super.key, this.cloud});
+  @override
+  State<SchoolSiftApp> createState() => _SchoolSiftAppState();
+}
+
+class _SchoolSiftAppState extends State<SchoolSiftApp> {
+  late final CloudSession cloud = widget.cloud ?? CloudSession(context.read<AppState>());
 
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<AppState>().language;
-    return MaterialApp(
+    return ChangeNotifierProvider.value(value: cloud, child: MaterialApp(
       onGenerateTitle: (c) => S.of(c).appName,
       debugShowCheckedModeBanner: false,
       locale: Locale(lang),
@@ -38,7 +53,7 @@ class SchoolSiftApp extends StatelessWidget {
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       home: const Shell(),
-    );
+    ));
   }
 }
 
@@ -153,6 +168,8 @@ class _ShellState extends State<Shell> {
         title: Row(children: [const AppLogo(size: 32), const SizedBox(width: 10), Expanded(child: Text(s.welcomeTitle))]),
         content: Text(s.welcomeBody),
         actions: [
+          // 爸爸 / 妈妈收到邀请后第一次打开:直接去登录,不用先看演示数据
+          if (context.read<CloudSession>().configured) TextButton(onPressed: () => Navigator.pop(c, 'join'), child: Text(s.welcomeJoin)),
           TextButton(onPressed: () => Navigator.pop(c, 'child'), child: Text(s.startFresh)),
           FilledButton(onPressed: () => Navigator.pop(c, 'demo'), child: Text(s.loadDemo)),
         ],
@@ -161,6 +178,9 @@ class _ShellState extends State<Shell> {
     if (!context.mounted) return;
     if (r == 'demo') {
       st.loadDemo();
+    } else if (r == 'join') {
+      setState(() => index = 4);
+      openFamilyScreen(context);
     } else {
       setState(() => index = 4);
       await showChildEditor(context);

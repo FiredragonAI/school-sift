@@ -32,12 +32,14 @@
 | **成长 · 学习记录** | 每日作业完成 / 阅读分钟 / 专注度 / 一句话 / **老师反馈**;连续打卡;近 14 天柱状 | — |
 | **成长 · 签字袋** | 纸质回执拍照存档,追踪到交回 | F03 |
 | **用英文回复** | 通知详情「用英文回复」(带上通知原文)或 更多「用英文写信」:中文写要点 → 选写给谁和语气 → 得体的英文邮件/短信 + **中文回译**;克制模式只纠错不重写;复制、分享、本机历史。写到第 3 封后出现一次可选的反馈卡 | K4.3 |
+| **家庭同步**(可选) | 更多 → 家庭同步:邮箱 + 密码登录,建家庭后用邮箱邀请家人;对方注册并验证邮箱后加入。之后爸爸妈妈各用自己的账号看到、修改同一份数据(孩子、通知、日程、待办、成绩、学习记录、照片),实时同步、离线可用;**权限完全相同,谁邀请谁都一样**。可退出家庭、可在应用内删除账号 | F03 F05 |
 | **更多** | 多孩子(各自颜色)、家庭成员、中 / 英文、**设置**(AI key、OCR 语言、提醒)、JSON 备份(含图片)与恢复、**四张 CSV 导出** | F04 |
 
 ## 隐私
 
 - 所有数据只在你的设备上:Android 是应用私有目录,网页版是浏览器的 IndexedDB。没有账号、没有我们的服务器、没有统计 SDK。
 - 本机 OCR 的图片不离开设备。
+- **家庭同步是可选的**:不开就和以前一样纯本机;开了以后数据存进 Google Firebase,只有家庭成员能读(规则见 `firebase/firestore.rules`,有 15 个模拟器测试)。API key、提醒设置、界面语言不同步。
 - 网页版启动不连任何外部域名(字体、CanvasKit 引擎都从本站加载);只有用到 OCR 时才从 jsdelivr 加载 Tesseract.js。
 - 「用英文回复」的反馈卡:不点按钮什么都不发;点了才打开反馈表单(只预填评分、回信条数、要不要键盘)或复制成文字。
 - **只有你主动点「用 AI 识别」时**,这一条通知的文字和附图才会用你自己的 API key 直接发给 Anthropic(api.anthropic.com),不经过任何中间服务器;第一次会弹窗说明发什么、不发什么(孩子姓名、成绩、其他通知都不发)。API key 只存在本机,不随备份导出。
@@ -73,6 +75,7 @@ flutter build apk --release --split-per-abi   # 需要 android/key.properties,�
 - 图标:`GEN_ICON=1 flutter test test/tools/gen_icon_test.dart` 重新生成 Android / Web 全部尺寸。
 - OCR:Web 端按需从 jsdelivr 加载 Tesseract.js(首次下载语言包);Android 端 ML Kit 拉丁 + 中文模型打进 APK。
 - 提醒:Android 用 `flutter_local_notifications` 不精确闹钟(不需要 SCHEDULE_EXACT_ALARM);每次数据变动 3 秒后整体重排。
+- 家庭同步:代码在 `app/lib/cloud/`(`cloud_session.dart` 总控、`family_sync.dart` 同步、`sync_merge.dart` 三方合并、`family_service.dart` 家庭与邀请)。Firebase 项目配置在 `lib/cloud/firebase_options.dart`(还是 demo- 项目时界面显示「还没开通」)。本机联调:`firebase emulators:start --only auth,firestore --project demo-schoolsift`(要 JDK 21),Flutter 构建加 `--dart-define=FIREBASE_EMULATOR=true`。规则测试:`cd firebase && npm test`。
 - 部署:推 `main` 后 `.github/workflows/pages.yml` 自动跑 analyze + test + build 并发布到 GitHub Pages。构建带 `--no-web-resources-cdn`(CanvasKit 与 Roboto 自托管,启动不连 gstatic)。
 - 反馈表单:在仓库 Settings → Secrets and variables → Actions → **Variables** 里加 `FEEDBACK_FORM_URL`(如 Tally / Google 表单地址),可用占位符 `{rating}` `{count}` `{keyboard}` `{lang}` 预填;本地构建用 `--dart-define=FEEDBACK_FORM_URL=...`。不设就只有「复制反馈」。
 
@@ -81,7 +84,7 @@ flutter build apk --release --split-per-abi   # 需要 android/key.properties,�
 - [x] 拍照 / 截图 / PDF 直接识别(本机 OCR + 可选 Claude)
 - [x] 本地推送提醒(Android),逾期持续催
 - [x] 发给家人(免安装协作)
-- [ ] 家庭成员间同步(目前靠 JSON 备份手动传)
+- [x] 家庭同步:邮箱邀请家人,权限相同,实时同步(可选,默认仍纯本机)
 - [ ] 邮件转发地址 / Gmail 只读授权,自动收通知(需要 Google 安全审计,等真实用户验证后再做)
 - [ ] iOS 版(同一代码,需要 Mac 或云构建)
 

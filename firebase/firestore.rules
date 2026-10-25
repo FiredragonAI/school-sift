@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// 学校通 · 家庭同步的访问规则
+//
+// 原则:家庭成员权限完全相同。谁邀请谁都一样——任何成员都能读写家庭的全部记录和照片、
+// 邀请别人、撤回邀请;只能把自己移出家庭,不能移除别人。
+// 被邀请的人必须用被邀请的邮箱登录、并且验证过邮箱,才能看到邀请并把自己加进去
+// (否则谁都能用别人的邮箱注册、截走邀请)。邮箱一律按小写比较。
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function familyDoc(fid) { return get(/databases/$(database)/documents/families/$(fid)); }
+    function isMember(fid) { return signedIn() && request.auth.uid in familyDoc(fid).data.memberUids; }
+
+    // 自己的账号记录:只记在哪个家庭
+    match /users/{uid} {
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+      // 注意:读的时候没有 request.resource,写规则单独放(曾经合在一起,导致自己读不了自己的记录)
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && (!('familyId' in request.resource.data) || request.resource.data.familyId == null
+            || request.resource.data.familyId is string);
+    }
+
+    match /families/{fid} {
+      function invited() { return verified() && myEmail() in resource.data.inviteEmails; }
+
+      allow read: if signedIn() && (request.auth.uid in resource.data.memberUids || invited());
+
+      // 建家庭:只能把自己放进去,不能顺手塞别人
+      allow create: if verified()
+        && request.resource.data.memberUids == [request.auth.uid]
+        && request.resource.data.memberEmails.keys().hasOnly([request.auth.uid])
+        && request.resource.data.memberEmails[request.auth.uid] == myEmail()
+        && request.resource.data.inviteEmails is list
+        && request.resource.data.inviteEmails.size() <= 20;
+
+      // 成员改家庭文档:能改邀请名单;成员名单只能「把自己移出」
+      function memberEdit() {
+        let d = request.resource.data;
+        let o = resource.data;
+        return request.auth.uid in o.memberUids
+          && d.diff(o).affectedKeys().hasOnly(['inviteEmails', 'memberUids', 'memberEmails'])
+          && d.inviteEmails is list && d.inviteEmails.size() <= 20
+          && (
+            (d.memberUids == o.memberUids && d.memberEmails == o.memberEmails)
+            || (d.memberUids.toSet() == o.memberUids.toSet().difference([request.auth.uid].toSet())
+                && d.memberEmails.diff(o.memberEmails).affectedKeys().hasOnly([request.auth.uid])
+                && !(request.auth.uid in d.memberEmails))
+          );
+      }
+
+      // 被邀请的人接受邀请:只把自己加进成员、把自己的邮箱从邀请里拿掉
+      function acceptInvite() {
+        let d = request.resource.data;
+        let o = resource.data;
+        return invited()
+          && d.diff(o).affectedKeys().hasOnly(['inviteEmails', 'memberUids', 'memberEmails'])
+          && d.memberUids.toSet() == o.memberUids.toSet().union([request.auth.uid].toSet())
+          && d.inviteEmails.toSet() == o.inviteEmails.toSet().difference([myEmail()].toSet())
+          && d.memberEmails.diff(o.memberEmails).affectedKeys().hasOnly([request.auth.uid])
+          && d.memberEmails[request.auth.uid] == myEmail();
+      }
+
+      allow update: if memberEdit() || acceptInvite();
+      allow delete: if false;
+
+      // 家庭的记录:每条一份,内容是 JSON 字符串
+      match /items/{docId} {
+        allow read, delete: if isMember(fid);
+        allow create, update: if isMember(fid)
+          && request.resource.data.keys().hasOnly(['kind', 'id', 'json', 't', 'by', 'at'])
+          && request.resource.data.kind in ['child', 'member', 'notice', 'event', 'task', 'grade', 'log', 'reply']
+          && request.resource.data.json is string
+          && request.resource.data.json.size() < 200000
+          && docId == request.resource.data.kind + '_' + request.resource.data.id
+          && request.resource.data.by == request.auth.uid;
+      }
+
+      // 照片:压缩后的 JPEG base64,单张不到 1 MB
+      match /images/{imageId} {
+        allow read, delete: if isMember(fid);
+        allow create, update: if isMember(fid)
+          && request.resource.data.keys().hasOnly(['b64', 'by', 'at'])
+          && request.resource.data.b64 is string
+          && request.resource.data.b64.size() < 1000000
+          && request.resource.data.by == request.auth.uid;
+      }
+    }
+
+    // 「发给这个邮箱的邀请」查询:规则对查询逐条检查,只能查自己邮箱的
+    // (families 的 read 规则里 invited() 已覆盖,这里不需要单独规则)
+  }
+}
