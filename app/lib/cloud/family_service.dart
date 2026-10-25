@@ -98,7 +98,7 @@ class FamilyService {
     await _user(uid).set({'familyId': null}, SetOptions(merge: true));
   }
 
-  /// 删除账号时调用:自己是家庭里最后一个人,就把家庭的全部记录、照片和邀请都删掉,再把自己移出;
+  /// 删除账号时调用:自己是家庭里最后一个人,就把家庭的全部记录、照片连同家庭文档一起删掉;
   /// 还有别人,只把自己移出(数据留给家人)。最后删 users/{uid}。
   Future<void> removeAccountData(String? fid, {required String uid}) async {
     if (fid != null) {
@@ -115,9 +115,10 @@ class FamilyService {
             await batch.commit();
           }
         }
-        await _family(fid).update({'inviteEmails': <String>[]});
+        await _family(fid).delete();
+      } else if (info != null && info.memberUids.contains(uid)) {
+        await leave(fid, uid: uid);
       }
-      if (info != null && info.memberUids.contains(uid)) await leave(fid, uid: uid);
     }
     await _user(uid).delete();
   }

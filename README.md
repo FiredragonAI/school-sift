@@ -75,7 +75,7 @@ flutter build apk --release --split-per-abi   # 需要 android/key.properties,�
 - 图标:`GEN_ICON=1 flutter test test/tools/gen_icon_test.dart` 重新生成 Android / Web 全部尺寸。
 - OCR:Web 端按需从 jsdelivr 加载 Tesseract.js(首次下载语言包);Android 端 ML Kit 拉丁 + 中文模型打进 APK。
 - 提醒:Android 用 `flutter_local_notifications` 不精确闹钟(不需要 SCHEDULE_EXACT_ALARM);每次数据变动 3 秒后整体重排。
-- 家庭同步:代码在 `app/lib/cloud/`(`cloud_session.dart` 总控、`family_sync.dart` 同步、`sync_merge.dart` 三方合并、`family_service.dart` 家庭与邀请)。Firebase 项目配置在 `lib/cloud/firebase_options.dart`(还是 demo- 项目时界面显示「还没开通」)。本机联调:`firebase emulators:start --only auth,firestore --project demo-schoolsift`(要 JDK 21),Flutter 构建加 `--dart-define=FIREBASE_EMULATOR=true`。规则测试:`cd firebase && npm test`。
+- 家庭同步:代码在 `app/lib/cloud/`(`cloud_session.dart` 总控、`family_sync.dart` 同步、`sync_merge.dart` 三方合并、`family_service.dart` 家庭与邀请)。正式 Firebase 项目是 `schoolsift-family`(Firestore 在 us-west2,邮箱/密码登录,授权域名含 firedragonai.github.io),配置在 `lib/cloud/firebase_options.dart`;改了规则后 `cd firebase && npx.cmd firebase deploy --only firestore:rules`(PowerShell 里用 npx.cmd)。本机联调:`firebase emulators:start --only auth,firestore --project demo-schoolsift`(要 JDK 21),Flutter 构建加 `--dart-define=FIREBASE_EMULATOR=true`。规则测试:`cd firebase && npm test`。
 - 部署:推 `main` 后 `.github/workflows/pages.yml` 自动跑 analyze + test + build 并发布到 GitHub Pages。构建带 `--no-web-resources-cdn`(CanvasKit 与 Roboto 自托管,启动不连 gstatic)。
 - 反馈表单:在仓库 Settings → Secrets and variables → Actions → **Variables** 里加 `FEEDBACK_FORM_URL`(如 Tally / Google 表单地址),可用占位符 `{rating}` `{count}` `{keyboard}` `{lang}` 预填;本地构建用 `--dart-define=FEEDBACK_FORM_URL=...`。不设就只有「复制反馈」。
 

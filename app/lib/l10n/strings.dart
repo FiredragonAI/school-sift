@@ -183,7 +183,7 @@ class S {
   String get clearAll => t('清空全部数据', 'Clear all data');
   String get clearConfirm => t('会删除本机全部数据,不可恢复。确定?', 'This deletes all local data. Continue?');
   String get about => t('关于', 'About');
-  String get privacy => t('数据只存在你的设备里,不上传。', 'Data stays on your device. Nothing is uploaded.');
+  String get privacy => t('默认数据只存在你的设备里,不上传;开启「家庭同步」后存到 Google Firebase,只有你的家人能看到。', 'By default your data stays on this device and nothing is uploaded; with Family sync on, it is stored in Google Firebase and only your family can see it.');
   String get name => t('姓名', 'Name');
   String get school => t('学校', 'School');
   String get gradeClass => t('年级/班级', 'Grade / class');

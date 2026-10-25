@@ -112,8 +112,9 @@ describe('加入后:权限完全相同', () => {
     await assertSucceeds(updateDoc(doc(ctx(dad), 'families', FID), { memberUids: arrayRemove(dad.uid), [`memberEmails.${dad.uid}`]: deleteField() }));
     await assertFails(getDocs(collection(ctx(dad), 'families', FID, 'items')));
   });
-  test('成员不能删家庭、不能改别的字段', async () => {
+  test('还有别人时谁都不能删家庭、不能改别的字段', async () => {
     await assertFails(deleteDoc(doc(ctx(mom), 'families', FID)));
+    await assertFails(deleteDoc(doc(ctx(dad), 'families', FID)));
     await assertFails(updateDoc(doc(ctx(mom), 'families', FID), { createdBy: dad.uid }));
   });
 });
@@ -128,6 +129,10 @@ describe('删除账号', () => {
     await assertSucceeds(updateDoc(doc(db, 'families', FID), { inviteEmails: [] }));
     await assertSucceeds(updateDoc(doc(db, 'families', FID), { memberUids: arrayRemove(mom.uid), [`memberEmails.${mom.uid}`]: deleteField() }));
     await assertSucceeds(deleteDoc(doc(db, 'users', mom.uid)));
+  });
+  test('只剩自己时能删掉家庭文档,外人不能', async () => {
+    await assertFails(deleteDoc(doc(ctx(eve), 'families', FID)));
+    await assertSucceeds(deleteDoc(doc(ctx(mom), 'families', FID)));
   });
 });
 

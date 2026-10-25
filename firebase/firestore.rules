@@ -66,7 +66,8 @@ service cloud.firestore {
       }
 
       allow update: if memberEdit() || acceptInvite();
-      allow delete: if false;
+      // 只有「家庭里只剩自己」时才能删家庭(删除账号时用;记录和照片要先删掉)
+      allow delete: if signedIn() && resource.data.memberUids == [request.auth.uid];
 
       // 家庭的记录:每条一份,内容是 JSON 字符串
       match /items/{docId} {
